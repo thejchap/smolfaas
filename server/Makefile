@@ -11,3 +11,5 @@ check:
 	@uv run mypy .
 docker:
 	@docker compose up --build
+install:
+	@uv sync --reinstall

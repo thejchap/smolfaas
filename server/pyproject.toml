@@ -25,7 +25,7 @@ build-backend = "scikit_build_core.build"
 [dependency-groups]
 dev = [
     "mypy>=1.14.1",
+    "pybind11>=2.13.6",
     "pytest>=8.3.4",
     "ruff>=0.9.2",
-    "pybind11>=2.13.6",
 ]
