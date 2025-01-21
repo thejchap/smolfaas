@@ -1,0 +1,10 @@
+{
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "python.testing.pytestEnabled": true,
+    "cmake.ctest.testExplorerIntegrationEnabled": false,
+    "python.testing.pytestArgs": ["tests"],
+    "python.testing.unittestEnabled": false,
+    "python.analysis.enablePytestSupport": true,
+    "python.analysis.inlayHints.pytestParameters": true
+}

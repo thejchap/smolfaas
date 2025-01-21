@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "server"
+		}
+	],
+	"settings": {
+		"ruff.enable": true,
+		"ruff.organizeImports": true,
+		"ruff.fixAll": true,
+		"ruff.lint.enable": true
+	}
+}
