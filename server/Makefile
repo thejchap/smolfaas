@@ -9,3 +9,5 @@ format:
 check:
 	@uv run ruff check
 	@uv run mypy .
+docker:
+	@docker compose up --build
