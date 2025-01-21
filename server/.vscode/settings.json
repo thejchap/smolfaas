@@ -25,6 +25,21 @@
     "python.analysis.diagnosticSeverityOverrides": {
         "reportMissingModuleSource": "none"
     },
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/__pycache__": true,
+        "dist": true,
+        "build": true,
+        ".venv": true,
+        ".vscode": true,
+        ".pytest_cache": true,
+        ".mypy_cache": true
+    },
     "search.exclude": {
         "**/build": true,
         "**/dist": true,
