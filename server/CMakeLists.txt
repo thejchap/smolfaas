@@ -7,7 +7,12 @@ set(CMAKE_CXX_STANDARD 20)
 # stuff for v8
 add_definitions(-DV8_ENABLE_SANDBOX)
 add_definitions(-DV8_COMPRESS_POINTERS)
-set(V8_DIR "/opt/homebrew/opt/v8")
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(V8_DIR "/opt/homebrew/opt/v8")
+else()
+    set(V8_DIR "/usr/local")
+endif()
 include_directories(${V8_DIR}/include)
 
 
