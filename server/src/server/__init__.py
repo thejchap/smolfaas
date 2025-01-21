@@ -1,9 +1,14 @@
+from fastapi import FastAPI
+
 from ._core import hello_from_bin
 
-
-def main() -> None:
-    print("main")
+APP = FastAPI()
 
 
-def hello() -> str:
+def hello():
     return hello_from_bin()
+
+
+@APP.get("/")
+async def root():
+    return hello()

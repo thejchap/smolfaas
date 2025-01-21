@@ -7,7 +7,9 @@ authors = [
     { name = "Justin Chapman", email = "commonmodestudio@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fastapi[standard]>=0.115.6",
+]
 
 [project.scripts]
 server = "server:main"
