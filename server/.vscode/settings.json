@@ -27,6 +27,7 @@
     },
     "search.exclude": {
         "**/build": true,
-        "**/dist": true
+        "**/dist": true,
+        "**/__pycache__": true
     }
 }
