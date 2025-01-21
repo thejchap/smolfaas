@@ -11,11 +11,6 @@
 #include "v8-primitive.h"
 #include "v8-script.h"
 
-std::string
-hello_from_bin() {
-    return "Hello from server!";
-}
-
 int
 v8_init() {
     v8::V8::InitializeICUDefaultLocation(".");
@@ -36,17 +31,11 @@ v8_shutdown() {
 namespace py = pybind11;
 
 PYBIND11_MODULE(_core, m) {
-    m.doc() = "pybind11 hello module";
-
-    m.def("hello_from_bin", &hello_from_bin, R"pbdoc(
-      A function that returns a Hello string.
-  )pbdoc");
-
+    m.doc() = "faas";
     m.def("v8_init", &v8_init, R"pbdoc(
-      A function that initializes V8.
+initialize v8
     )pbdoc");
-
     m.def("v8_shutdown", &v8_shutdown, R"pbdoc(
-      A function that shuts down V8.
+shutdown v8
     )pbdoc");
 }

@@ -3,6 +3,11 @@
     "editor.defaultFormatter": "charliermarsh.ruff",
     "python.testing.pytestEnabled": true,
     "cmake.ctest.testExplorerIntegrationEnabled": false,
+    "editor.codeActionsOnSave": {
+        "source.fixAll": "always",
+        "source.organizeImports.ruff": "always",
+        "source.unusedImports": "always"
+    },
     "python.testing.pytestArgs": ["tests"],
     "python.testing.unittestEnabled": false,
     "python.analysis.enablePytestSupport": true,
