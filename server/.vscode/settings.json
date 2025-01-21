@@ -24,5 +24,9 @@
     "python.analysis.inlayHints.variableTypes": true,
     "python.analysis.diagnosticSeverityOverrides": {
         "reportMissingModuleSource": "none"
+    },
+    "search.exclude": {
+        "**/build": true,
+        "**/dist": true
     }
 }

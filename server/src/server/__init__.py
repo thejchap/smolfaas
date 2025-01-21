@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
 
 from ._core import v8_init, v8_shutdown
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_: FastAPI):
     if v8_init() != 0:
         raise RuntimeError("failed to initialize v8")
     yield
@@ -17,9 +18,9 @@ async def lifespan(_app: FastAPI):
 APP = FastAPI(lifespan=lifespan)
 
 
-@APP.get("/")
+@APP.get("/", response_class=PlainTextResponse)
 def root():
-    return "hello, world!"
+    return "faas"
 
 
 def main():

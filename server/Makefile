@@ -12,5 +12,5 @@ check:
 docker:
 	@docker compose up --build
 install:
-	@brew install v8
+	@brew install v8 cmake
 	@uv sync --reinstall
