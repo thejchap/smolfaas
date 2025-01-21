@@ -1,8 +1,20 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-from ._core import hello_from_bin
+from ._core import hello_from_bin, v8_init, v8_shutdown
 
-APP = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if v8_init() != 0:
+        raise RuntimeError("Failed to initialize V8")
+    yield
+    if v8_shutdown() != 0:
+        raise RuntimeError("Failed to shutdown V8")
+
+
+APP = FastAPI(lifespan=lifespan)
 
 
 def hello():
