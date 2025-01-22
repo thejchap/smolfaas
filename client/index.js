@@ -3,7 +3,7 @@ import axios from "axios";
 const BASE_URL = import.meta.env.BASE_URL || "http://localhost:8000";
 const CLIENT = axios.create({
     baseURL: BASE_URL,
-    headers: { "Content-Type": "application/json" },
+    headers: { "content-type": "application/json" },
 });
 
 export async function run(fn, ...args) {
