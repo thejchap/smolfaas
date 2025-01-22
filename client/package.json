@@ -1,6 +1,7 @@
 {
     "name": "tinyfaas",
     "module": "index.js",
+    "main": "index.js",
     "type": "module",
     "devDependencies": {
         "@types/bun": "latest",
