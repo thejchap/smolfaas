@@ -11,6 +11,7 @@ check:
 	@uv run mypy .
 docker:
 	@docker compose up --build
-install:
+brew:
 	@brew install v8 cmake
+install:
 	@uv sync --reinstall

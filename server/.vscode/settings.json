@@ -44,5 +44,7 @@
         "**/build": true,
         "**/dist": true,
         "**/__pycache__": true
-    }
+    },
+    "C_Cpp.codeAnalysis.clangTidy.enabled": true,
+    "C_Cpp.codeAnalysis.runAutomatically": true
 }

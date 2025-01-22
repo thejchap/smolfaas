@@ -3,16 +3,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 
-from ._core import v8_init, v8_shutdown
+from ._core import V8
+
+V8_INSTANCE = V8()
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    if v8_init() != 0:
-        raise RuntimeError("failed to initialize v8")
+    V8_INSTANCE.init()
     yield
-    if v8_shutdown() != 0:
-        raise RuntimeError("failed to shutdown v8")
 
 
 APP = FastAPI(lifespan=lifespan)
