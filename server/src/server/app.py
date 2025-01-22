@@ -30,7 +30,7 @@ def root():
 
 class RunRequest(BaseModel):
     func: str
-    args: list[str | int]
+    args: list[str | int] = []
 
 
 class RunResponse(BaseModel):

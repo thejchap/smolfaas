@@ -23,7 +23,7 @@ function hello(world) {
 };
 hello("world");
     """
-    res = client.post("/run", json={"src": src})
+    res = client.post("/run", json={"func": src})
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["result"] == "Hello, world!"
