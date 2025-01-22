@@ -1,5 +1,3 @@
-// https://chromium.googlesource.com/v8/v8/+/branch-heads/11.9/samples/hello-world.cc
-
 #include <pybind11/pybind11.h>
 
 #include <cstdio>
