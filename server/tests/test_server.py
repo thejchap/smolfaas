@@ -16,14 +16,8 @@ def test_root(client: TestClient):
     assert res.text == "faas"
 
 
-def test_deploy(client: TestClient):
-    res = client.post("/functions/foo/deploy", json={"src": "console.log('hello')"})
-    assert res.status_code == 200
+def test_run(client: TestClient):
+    res = client.post("/run", json={"src": "console.log('hello')"})
+    assert res.status_code == 200, res.text
     body = res.json()
-    assert body["function_id"] == "foo"
     assert body["ok"]
-
-
-def test_invoke(client: TestClient):
-    res = client.post("/functions/foo/invoke")
-    assert res.status_code == 200

@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-class V8:
-    @staticmethod
-    def init() -> None: ...
-    @staticmethod
-    def shutdown() -> None: ...
+class V8System:
     @staticmethod
     def compile(src: str) -> bytearray: ...

@@ -15,19 +15,21 @@
 #include "v8-script.h"
 #include "v8-snapshot.h"
 
-namespace py = pybind11;
+struct V8System {
+    std::unique_ptr<v8::Platform> platform;
 
-struct API {
-    static void Init() {
+    V8System() {
+        // TODO(thejchap) - what does this do
         v8::V8::InitializeICUDefaultLocation(".");
         v8::V8::InitializeExternalStartupData(".");
-        std::unique_ptr<v8::Platform> platform =
-            v8::platform::NewDefaultPlatform();
+
+        // initialize v8
+        platform = v8::platform::NewDefaultPlatform();
         v8::V8::InitializePlatform(platform.get());
         v8::V8::Initialize();
     }
 
-    static std::vector<uint8_t> Compile(const std::string& src) {
+    static std::vector<uint8_t> compile(const std::string& src) {
         v8::SnapshotCreator snapshot_creator = v8::SnapshotCreator();
         v8::StartupData snapshot_blob = snapshot_creator.CreateBlob(
             v8::SnapshotCreator::FunctionCodeHandling::kKeep);
@@ -61,20 +63,18 @@ struct API {
         delete create_params.array_buffer_allocator;
     }
 
-    static void Shutdown() {
-        // docs say: it should generally not be necessary to dispose v8 before
-        // exiting a process, this should happen automatically.
-        // so not gonna call this from python for now
+    ~V8System() {
+        // destructor - clean up v8
         v8::V8::Dispose();
         v8::V8::DisposePlatform();
     }
 };
 
+namespace py = pybind11;
+
 PYBIND11_MODULE(_core, m) {   // NOLINT(misc-use-anonymous-namespace)
     m.doc() = "faas";
-    py::class_<API>(m, "V8")
-        .def(py::init<>())
-        .def("compile", &API::Compile, R"pbdoc(compile v8 script)pbdoc")
-        .def("init", &API::Init, R"pbdoc(initialize v8)pbdoc")
-        .def("shutdown", &API::Shutdown, R"pbdoc(shutdown v8)pbdoc");
+    py::class_<V8System>(m, "V8System")
+        .def(py::init())
+        .def("compile", &V8System::compile, R"pbdoc(compile v8 script)pbdoc");
 }
