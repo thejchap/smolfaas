@@ -29,7 +29,7 @@ APP = FastAPI(lifespan=lifespan)
 
 @APP.get("/", response_class=PlainTextResponse)
 def root():
-    return "faas"
+    return "tinyfaas"
 
 
 class RunRequest(BaseModel):
@@ -37,11 +37,10 @@ class RunRequest(BaseModel):
 
 
 class RunResponse(BaseModel):
-    ok: bool = True
+    result: str
 
 
 @APP.post("/run", response_model=RunResponse)
 def run(req: RunRequest, v8: Annotated[V8System, Depends(get_v8)]):
-    print(v8)
-    print(req.src)
-    return RunResponse()
+    result = v8.run(req.src)
+    return RunResponse(result=result)

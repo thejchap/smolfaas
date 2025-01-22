@@ -13,11 +13,17 @@ def client():
 def test_root(client: TestClient):
     res = client.get("/")
     assert res.status_code == 200
-    assert res.text == "faas"
+    assert res.text == "tinyfaas"
 
 
 def test_run(client: TestClient):
-    res = client.post("/run", json={"src": "console.log('hello')"})
+    src = """
+function hello(world) {
+    return "Hello, " + world + "!";
+};
+hello("world");
+    """
+    res = client.post("/run", json={"src": src})
     assert res.status_code == 200, res.text
     body = res.json()
-    assert body["ok"]
+    assert body["result"] == "Hello, world!"
