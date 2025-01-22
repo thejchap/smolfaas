@@ -4,11 +4,7 @@
     "main": "index.js",
     "type": "module",
     "devDependencies": {
-        "@types/bun": "latest",
         "prettier": "^3.4.2"
-    },
-    "peerDependencies": {
-        "typescript": "^5.0.0"
     },
     "dependencies": {
         "reflect-metadata": "^0.2.2"
