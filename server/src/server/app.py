@@ -11,10 +11,6 @@ from ._core import V8System
 
 @cache
 def get_v8():
-    """
-    initializes v8
-    this is where we pay v8 startup cost
-    """
     return V8System()
 
 
@@ -33,7 +29,8 @@ def root():
 
 
 class RunRequest(BaseModel):
-    src: str
+    func: str
+    args: list[str | int]
 
 
 class RunResponse(BaseModel):
@@ -42,5 +39,5 @@ class RunResponse(BaseModel):
 
 @APP.post("/run", response_model=RunResponse)
 def run(req: RunRequest, v8: Annotated[V8System, Depends(get_v8)]):
-    result = v8.run(req.src)
+    result = v8.run(req.func)
     return RunResponse(result=result)
