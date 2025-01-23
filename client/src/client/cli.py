@@ -35,4 +35,4 @@ def run(
         except Exception:
             typer.secho(res.text, fg="red")
         raise typer.Exit(1)
-    typer.echo(res.json()["result"])
+    typer.echo(res.json())

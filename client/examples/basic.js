@@ -1,3 +1,3 @@
-export default function handler() {
-    console.log("Hello, world!");
+export default async function handler() {
+    return "hello";
 }

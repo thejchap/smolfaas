@@ -5,14 +5,7 @@
 #include <cstring>
 
 #include "libplatform/libplatform.h"
-#include "v8-context.h"
-#include "v8-exception.h"
-#include "v8-initialization.h"
-#include "v8-isolate.h"
-#include "v8-local-handle.h"
-#include "v8-primitive.h"
-#include "v8-script.h"
-#include "v8-snapshot.h"
+#include "v8.h"
 
 namespace py = pybind11;
 
@@ -46,21 +39,83 @@ struct V8System {
                     v8::String::NewFromUtf8(isolate, src.c_str(),
                                             v8::NewStringType::kNormal)
                         .ToLocalChecked();
-                auto maybe_script = v8::Script::Compile(context, source);
-                if (maybe_script.IsEmpty()) {
+                auto maybe_module = load_module(source, context);
+                if (maybe_module.IsEmpty()) {
                     v8::String::Utf8Value err(isolate, try_catch.Exception());
                     throw std::runtime_error(*err);
                 }
-                v8::Local<v8::Script> script = maybe_script.ToLocalChecked();
-                v8::Local<v8::Value> result =
-                    script->Run(context).ToLocalChecked();
-                v8::String::Utf8Value utf8(isolate, result);
-                output = *utf8 ? *utf8 : "undefined";
+                v8::Local<v8::Module> mod;
+                if (!maybe_module.ToLocal(&mod)) {
+                    v8::String::Utf8Value err(isolate, try_catch.Exception());
+                    throw std::runtime_error(*err);
+                }
+                v8::Maybe<bool> result =
+                    mod->InstantiateModule(context, nullptr);
+                if (result.IsNothing()) {
+                    v8::String::Utf8Value err(isolate, try_catch.Exception());
+                    throw std::runtime_error(*err);
+                }
+                if (mod->Evaluate(context).IsEmpty()) {
+                    v8::String::Utf8Value err(isolate, try_catch.Exception());
+                    throw std::runtime_error(*err);
+                }
+                auto namespace_object = mod->GetModuleNamespace();
+                v8::Local<v8::Value> ret_value;
+                if (namespace_object->IsObject()) {
+                    auto maybe_default_export =
+                        namespace_object.As<v8::Object>()->Get(
+                            context, v8::String::NewFromUtf8(isolate, "default")
+                                         .ToLocalChecked());
+                    if (maybe_default_export.IsEmpty()) {
+                        throw std::runtime_error("default export is empty");
+                    }
+                    auto default_export = maybe_default_export.ToLocalChecked();
+                    if (default_export->IsAsyncFunction()) {
+                        auto func = default_export.As<v8::Function>();
+                        auto maybe_promise =
+                            func->Call(context, context->Global(), 0, nullptr);
+                        if (maybe_promise.IsEmpty()) {
+                            v8::String::Utf8Value err(isolate,
+                                                      try_catch.Exception());
+                            throw std::runtime_error(
+                                "call default export failed to return a "
+                                "promise");
+                        }
+                        auto promise = maybe_promise.ToLocalChecked();
+                        if (promise->IsPromise()) {
+                            ret_value = promise.As<v8::Promise>()->Result();
+                        } else {
+                            throw std::runtime_error(
+                                "promise did not resolve to a value");
+                        }
+                    } else {
+                        throw std::runtime_error(
+                            "default export is not an async function");
+                    }
+                } else {
+                    throw std::runtime_error(
+                        "module namespace is not an object");
+                }
+                output = *v8::String::Utf8Value(isolate, ret_value);
             }
         }
         isolate->Dispose();
         delete create_params.array_buffer_allocator;
         return output;
+    }
+
+    static v8::MaybeLocal<v8::Module> load_module(v8::Local<v8::String> code,
+                                                  v8::Local<v8::Context> cx) {
+        v8::ScriptOrigin origin(
+            v8::String::NewFromUtf8(cx->GetIsolate(), "module")
+                .ToLocalChecked(),
+            0, 0, false, -1, v8::Local<v8::Value>(), false, false, true,
+            v8::Local<v8::Data>());
+        v8::Context::Scope context_scope(cx);
+        v8::ScriptCompiler::Source source(code, origin);
+        v8::MaybeLocal<v8::Module> mod;
+        mod = v8::ScriptCompiler::CompileModule(cx->GetIsolate(), &source);
+        return mod;
     }
 
     ~V8System() {

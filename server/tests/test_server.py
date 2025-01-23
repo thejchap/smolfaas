@@ -18,12 +18,11 @@ def test_root(client: TestClient):
 
 def test_run(client: TestClient):
     src = """
-function hello(world) {
-    return "Hello, " + world + "!";
+export default async function handler() {
+    return "hello";
 };
-hello("world");
     """
-    res = client.post("/run", json={"func": src})
+    res = client.post("/run", json={"src": src})
     assert res.status_code == 200, res.text
     body = res.json()
-    assert body["result"] == "Hello, world!"
+    assert body["result"] == "hello"
