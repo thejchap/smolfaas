@@ -1,7 +1,3 @@
-import { run } from "..";
-
-function hello(world, exclamation) {
-    return `Hello, ${world}${exclamation}`;
+export default function handler() {
+    console.log("Hello, world!");
 }
-
-console.log(await run(hello, "world", 3));

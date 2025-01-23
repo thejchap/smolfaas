@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from functools import cache
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response, status
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
@@ -29,15 +29,25 @@ def root():
 
 
 class RunRequest(BaseModel):
-    func: str
-    args: list[str | int] = []
+    src: str
+
+
+class ExceptionResponse(BaseModel):
+    message: str
 
 
 class RunResponse(BaseModel):
-    result: str
+    result: str | None = None
+    error: ExceptionResponse | None = None
 
 
 @APP.post("/run", response_model=RunResponse)
-def run(req: RunRequest, v8: Annotated[V8System, Depends(get_v8)]):
-    result = v8.run(req.func)
-    return RunResponse(result=result)
+def run(req: RunRequest, v8: Annotated[V8System, Depends(get_v8)], response: Response):
+    result: str | None = None
+    err: ExceptionResponse | None = None
+    try:
+        result = v8.run(req.src)
+    except RuntimeError as e:
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        err = ExceptionResponse(message=str(e))
+    return RunResponse(result=result, error=err)
