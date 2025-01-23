@@ -5,6 +5,7 @@ import requests
 import typer
 
 CLI = typer.Typer()
+DEFAULT_BASE_URL = "http://localhost:8000"
 
 
 @CLI.command()
@@ -23,7 +24,7 @@ def run(
             help="base url of the tinyfaas server",
             envvar="BASE_URL",
         ),
-    ] = "http://localhost:8000",
+    ] = DEFAULT_BASE_URL,
 ):
     with open(module_path) as f:
         src = f.read()
