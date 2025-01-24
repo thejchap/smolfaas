@@ -1,3 +1,4 @@
+import sqlite3
 from contextlib import asynccontextmanager
 from functools import cache
 from typing import Annotated
@@ -12,6 +13,16 @@ from ._core import V8System
 @cache
 def get_v8():
     return V8System()
+
+
+def get_conn():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
 
 
 @asynccontextmanager
@@ -70,7 +81,11 @@ def deploy(
     function_id: str,
     req: DeployRequest,
     v8: Annotated[V8System, Depends(get_v8)],
+    conn: Annotated[sqlite3.Connection, Depends(get_conn)],
     response: Response,
 ):
     _snapshot = v8.compile(req.src)
+    cur = conn.cursor()
+    res = cur.execute("SELECT 'hello';")
+    _row = res.fetchone()
     return DeployResponse()
