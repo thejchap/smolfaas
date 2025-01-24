@@ -9,17 +9,25 @@
 
 namespace py = pybind11;
 
+/**
+ * V8System class that encapsulates the v8 runtime
+ * stateful/instantiated when the embedding app is started up,
+ * torn down on app shutdown
+ */
 class V8System {
-   private:
-    std::unique_ptr<v8::Platform> platform_;
-
    public:
+    /**
+     * constructor that initializes v8 and the platform
+     */
     V8System() {
         platform_ = v8::platform::NewDefaultPlatform();
         v8::V8::InitializePlatform(platform_.get());
         v8::V8::Initialize();
     }
 
+    /**
+     * takes a script source code and compiles it+runs it
+     */
     static std::string compile_and_run(const std::string& src) {
         // create a new isolate
         v8::Isolate::CreateParams create_params;
@@ -49,7 +57,13 @@ class V8System {
         return call_default_export(isolate.get(), context, module);
     }
 
+    /**
+     * compile source code
+     * take snapshot of the v8 heap after the module is loaded and compiled
+     * return snapshot so app can save the deployment for later invocations
+     */
     static py::bytes compile(const std::string& src) {
+        // this uses a different isolate setup than normal script compilation
         v8::SnapshotCreator snapshot_creator;
         auto* isolate = snapshot_creator.GetIsolate();
         {
@@ -80,6 +94,15 @@ class V8System {
     }
 
    private:
+    /**
+     * v8 platform instance. this needs to be kept alive for the lifetime of the
+     * class instance
+     */
+    std::unique_ptr<v8::Platform> platform_;
+
+    /**
+     * load a module from source code in the given context
+     */
     static v8::MaybeLocal<v8::Module> load_module(v8::Local<v8::String> code,
                                                   v8::Local<v8::Context> cx) {
         // compile the module
@@ -91,6 +114,14 @@ class V8System {
         return res;
     }
 
+    /**
+     * takes a compiled esm module and calls the default (async) export. ie:
+     * ```js
+     * export default async function() {
+     *  return "hello world";
+     * }
+     * ```
+     */
     static std::string call_default_export(v8::Isolate* isolate,
                                            v8::Local<v8::Context> context,
                                            v8::Local<v8::Module> module) {
@@ -137,12 +168,19 @@ class V8System {
         throw std::runtime_error(*error ? *error : "unknown error");
     }
 
+    /**
+     * dispose the isolate and its array buffer allocator
+     * this is called when the unique_ptr of the isolate goes out of scope
+     */
     static void dispose_isolate(v8::Isolate* isolate) {
         isolate->Dispose();
         delete v8::ArrayBuffer::Allocator::NewDefaultAllocator();
     }
 };
 
+/**
+ * expose the V8System class to python
+ */
 PYBIND11_MODULE(_core, m) {   // NOLINT(misc-use-anonymous-namespace)
     py::class_<V8System>(m, "V8System")
         .def(py::init<>())
