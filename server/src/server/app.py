@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from contextlib import asynccontextmanager
 from functools import cache
@@ -8,6 +9,8 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from ._core import V8System
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 @cache
@@ -58,6 +61,7 @@ def run(
     v8: Annotated[V8System, Depends(get_v8)],
     response: Response,
 ):
+    logging.debug(req.model_dump_json())
     result: str | None = None
     err: ExceptionResponse | None = None
     try:
@@ -73,7 +77,7 @@ class DeployRequest(BaseModel):
 
 
 class DeployResponse(BaseModel):
-    pass
+    ok: bool = True
 
 
 @APP.post(
@@ -88,6 +92,7 @@ def deploy(
     conn: Annotated[sqlite3.Connection, Depends(get_conn)],
     response: Response,
 ):
+    logging.debug(req.model_dump_json())
     _snapshot = v8.compile(req.src)
     cur = conn.cursor()
     res = cur.execute("SELECT 'hello';")
