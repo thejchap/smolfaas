@@ -16,13 +16,13 @@ def test_root(client: TestClient):
     assert res.text == "tinyfaas"
 
 
-def test_run(client: TestClient):
+def test_invoke(client: TestClient):
     src = """
 export default async function handler() {
     return "hello";
 };
     """
-    res = client.post("/run", json={"src": src})
+    res = client.post("/invoke", json={"source": src})
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["result"] == "hello"
@@ -34,5 +34,5 @@ export default async function handler() {
     return "hello";
 };
     """
-    res = client.post("/functions/hello/deploy", json={"src": src})
+    res = client.post("/functions/hello/deploy", json={"source": src})
     assert res.status_code == 201, res.text

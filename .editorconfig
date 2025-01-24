@@ -8,3 +8,17 @@ insert_final_newline = true
 
 [{Makefile,**.mk}]
 indent_style = tab
+
+[{Dockerfile}]
+indent_style = tab
+
+[{*.yml,*.yaml}]
+indent_style = space
+indent_size = 2
+
+[{*.json}]
+indent_style = space
+indent_size = 2
+
+[{*.md}]
+trim_trailing_whitespace = false

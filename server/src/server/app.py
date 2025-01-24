@@ -1,4 +1,3 @@
-import logging
 import sqlite3
 from contextlib import asynccontextmanager, contextmanager
 from functools import cache
@@ -32,6 +31,9 @@ get_conn_ctx = contextmanager(get_conn)
 
 
 def migrate():
+    """
+    set up sqlite db on startup
+    """
     with get_conn_ctx() as conn:
         conn.execute(
             """
@@ -58,60 +60,56 @@ def root():
     return "tinyfaas"
 
 
-class RunRequest(BaseModel):
-    src: str
+class SourceInvocationRequest(BaseModel):
+    source: str
 
 
 class ExceptionResponse(BaseModel):
     message: str
 
 
-class RunResponse(BaseModel):
-    result: str | None = None
-    error: ExceptionResponse | None = None
+class SourceInvocationResponse(BaseModel):
+    result: str
 
 
-@APP.post("/run", response_model=RunResponse)
-def run(
-    req: RunRequest,
+@APP.post("/invoke", response_model=SourceInvocationResponse)
+def invoke_source(
+    req: SourceInvocationRequest,
     v8: Annotated[V8System, Depends(get_v8)],
-    response: Response,
 ):
-    logging.debug(req.model_dump_json())
-    result: str | None = None
-    err: ExceptionResponse | None = None
-    try:
-        result = v8.compile_and_run(req.src)
-    except RuntimeError as e:
-        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        err = ExceptionResponse(message=str(e))
-    return RunResponse(result=result, error=err)
+    """
+    compile and run script on the fly
+    """
+    result = v8.compile_and_run(req.source)
+    return SourceInvocationResponse(result=result)
 
 
-class DeployRequest(BaseModel):
-    src: str
+class FunctionDeployRequest(BaseModel):
+    source: str
 
 
-class DeployResponse(BaseModel):
+class FunctionDeployResponse(BaseModel):
     ok: bool = True
 
 
 @APP.post(
     "/functions/{function_id}/deploy",
-    response_model=DeployResponse,
+    response_model=FunctionDeployResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def deploy(
     function_id: str,
-    req: DeployRequest,
+    req: FunctionDeployRequest,
     v8: Annotated[V8System, Depends(get_v8)],
     conn: Annotated[sqlite3.Connection, Depends(get_conn)],
     response: Response,
 ):
-    logging.debug(req.model_dump_json())
-    snapshot = v8.compile(req.src)
+    """
+    compile script and snapshot v8 heap, store in sqlite for invocation
+    """
+    snapshot = v8.compile(req.source)
     cur = conn.cursor()
-    res = cur.execute(
+    cur.execute(
         """
 INSERT INTO function (function_id, snapshot)
 VALUES (?, ?)
@@ -120,5 +118,4 @@ DO UPDATE SET snapshot = excluded.snapshot;
     """,
         (function_id, snapshot),
     )
-    _row = res.fetchone()
-    return DeployResponse()
+    return FunctionDeployResponse()

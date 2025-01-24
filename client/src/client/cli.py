@@ -11,7 +11,7 @@ DEFAULT_BASE_URL = "http://localhost:8000"
 
 
 @CLI.command()
-def run(
+def invoke(
     module_path: Annotated[
         Path,
         typer.Argument(
@@ -30,7 +30,7 @@ def run(
 ):
     with open(module_path) as f:
         src = f.read()
-    res = requests.post(f"{base_url}/run", json={"src": src})
+    res = requests.post(f"{base_url}/invoke", json={"source": src})
     if not res.ok:
         try:
             typer.secho(res.json()["error"]["message"], fg="red")
@@ -64,7 +64,9 @@ def deploy(
 ):
     with open(module_path) as f:
         src = f.read()
-    res = requests.post(f"{base_url}/functions/{function_id}/deploy", json={"src": src})
+    res = requests.post(
+        f"{base_url}/functions/{function_id}/deploy", json={"source": src}
+    )
     if not res.ok:
         try:
             typer.secho(res.json()["error"]["message"], fg="red")
