@@ -46,8 +46,31 @@ def run(req: RunRequest, v8: Annotated[V8System, Depends(get_v8)], response: Res
     result: str | None = None
     err: ExceptionResponse | None = None
     try:
-        result = v8.run(req.src)
+        result = v8.compile_and_run(req.src)
     except RuntimeError as e:
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         err = ExceptionResponse(message=str(e))
     return RunResponse(result=result, error=err)
+
+
+class DeployRequest(BaseModel):
+    src: str
+
+
+class DeployResponse(BaseModel):
+    pass
+
+
+@APP.post(
+    "/functions/{function_id}/deploy",
+    response_model=DeployResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def deploy(
+    function_id: str,
+    req: DeployRequest,
+    v8: Annotated[V8System, Depends(get_v8)],
+    response: Response,
+):
+    _snapshot = v8.compile(req.src)
+    return DeployResponse()

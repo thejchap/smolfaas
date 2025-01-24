@@ -2,7 +2,7 @@
 name = "server"
 version = "0.1.0"
 description = "Add your description here"
-readme = "../README.md"
+readme = "README.md"
 authors = [
     { name = "Justin Chapman", email = "commonmodestudio@gmail.com" }
 ]

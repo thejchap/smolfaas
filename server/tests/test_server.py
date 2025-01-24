@@ -26,3 +26,13 @@ export default async function handler() {
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["result"] == "hello"
+
+
+def test_compile(client: TestClient):
+    src = """
+export default async function handler() {
+    return "hello";
+};
+    """
+    res = client.post("/functions/hello/deploy", json={"src": src})
+    assert res.status_code == 201, res.text

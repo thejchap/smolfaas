@@ -8,7 +8,12 @@ set(CMAKE_CXX_STANDARD 20)
 add_definitions(-DV8_ENABLE_SANDBOX)
 add_definitions(-DV8_COMPRESS_POINTERS)
 
-set(V8_DIR "/opt/homebrew/opt/v8")
+if (APPLE)
+    set(V8_DIR "/opt/homebrew/opt/v8")
+else()
+    set(V8_DIR "/usr/lib/aarch64-linux-gnu")
+    include_directories("/usr/include/node")
+endif()
 include_directories(${V8_DIR}/include)
 
 
@@ -20,11 +25,19 @@ find_package(pybind11 CONFIG REQUIRED)
 pybind11_add_module(_core MODULE src/main.cpp)
 
 # Link libraries
-target_link_libraries(_core
-    PRIVATE
-        ${V8_DIR}/lib/libv8.dylib
-        ${V8_DIR}/lib/libv8_libplatform.dylib
-)
+if(APPLE)
+    target_link_libraries(_core
+        PRIVATE
+            ${V8_DIR}/lib/libv8.dylib
+            ${V8_DIR}/lib/libv8_libplatform.dylib
+    )
+else()
+    target_link_libraries(_core
+        PRIVATE
+            ${V8_DIR}/libv8.so
+            ${V8_DIR}/libv8_libplatform.so
+    )
+endif()
 
 install(TARGETS _core LIBRARY DESTINATION _core DESTINATION ${SKBUILD_PROJECT_NAME})
 
