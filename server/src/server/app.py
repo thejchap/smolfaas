@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS function (
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    get_v8()
     migrate()
+    get_v8()
     yield
 
 
@@ -62,10 +62,6 @@ def root():
 
 class SourceInvocationRequest(BaseModel):
     source: str
-
-
-class ExceptionResponse(BaseModel):
-    message: str
 
 
 class SourceInvocationResponse(BaseModel):
