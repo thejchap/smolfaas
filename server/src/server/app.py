@@ -53,7 +53,11 @@ class RunResponse(BaseModel):
 
 
 @APP.post("/run", response_model=RunResponse)
-def run(req: RunRequest, v8: Annotated[V8System, Depends(get_v8)], response: Response):
+def run(
+    req: RunRequest,
+    v8: Annotated[V8System, Depends(get_v8)],
+    response: Response,
+):
     result: str | None = None
     err: ExceptionResponse | None = None
     try:
