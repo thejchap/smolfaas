@@ -1,6 +1,6 @@
 import logging
 import sqlite3
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from functools import cache
 from typing import Annotated
 
@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from ._core import V8System
 
-logging.basicConfig(level=logging.DEBUG)
+SQLITE_URL = "tmp/db.sqlite3"
 
 
 @cache
@@ -19,7 +19,7 @@ def get_v8():
 
 
 def get_conn():
-    conn = sqlite3.connect(":memory:")
+    conn = sqlite3.connect(SQLITE_URL)
     conn.row_factory = sqlite3.Row
     try:
         with conn:
@@ -28,9 +28,25 @@ def get_conn():
         conn.close()
 
 
+get_conn_ctx = contextmanager(get_conn)
+
+
+def migrate():
+    with get_conn_ctx() as conn:
+        conn.execute(
+            """
+CREATE TABLE IF NOT EXISTS function (
+    function_id TEXT PRIMARY KEY,
+    snapshot BLOB NOT NULL
+);
+    """
+        )
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     get_v8()
+    migrate()
     yield
 
 
@@ -93,8 +109,16 @@ def deploy(
     response: Response,
 ):
     logging.debug(req.model_dump_json())
-    _snapshot = v8.compile(req.src)
+    snapshot = v8.compile(req.src)
     cur = conn.cursor()
-    res = cur.execute("SELECT 'hello';")
+    res = cur.execute(
+        """
+INSERT INTO function (function_id, snapshot)
+VALUES (?, ?)
+ON CONFLICT (function_id)
+DO UPDATE SET snapshot = excluded.snapshot;
+    """,
+        (function_id, snapshot),
+    )
     _row = res.fetchone()
     return DeployResponse()
