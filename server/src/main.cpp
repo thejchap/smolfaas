@@ -1,6 +1,5 @@
 #include <libplatform/libplatform.h>
 #include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
 #include <v8.h>
 
 #include <memory>
@@ -61,10 +60,37 @@ class V8System {
      * restore the v8 heap from a snapshot
      * into an isolate and run the module
      */
-    static std::string invoke_snapshot(
-        py::bytes
-            snapshot_bytes) {   // NOLINT(misc-unused-parameters,performance-unnecessary-value-param)
-        return "not implemented";
+    static std::string invoke_snapshot(const std::string& snapshot_bytes) {
+        // restore snapshot into create params for isolate
+        v8::StartupData snapshot(snapshot_bytes.c_str(), snapshot_bytes.size());
+        v8::Isolate::CreateParams create_params;
+        create_params.snapshot_blob = &snapshot;
+        create_params.array_buffer_allocator =
+            v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+        // create isolate
+        std::unique_ptr<v8::Isolate, decltype(&dispose_isolate)> isolate(
+            v8::Isolate::New(create_params), dispose_isolate);
+        // create scope and context
+        v8::Isolate::Scope isolate_scope(isolate.get());
+        v8::HandleScope handle_scope(isolate.get());
+        v8::Local<v8::Context> context = v8::Context::New(isolate.get());
+        // enter context
+        v8::Context::Scope context_scope(context);
+        v8::TryCatch try_catch(isolate.get());
+        // call default export
+        auto maybe_module =
+            load_module(to_v8_string(isolate.get(), ""), context);
+        if (maybe_module.IsEmpty()) {
+            throw_runtime_error(isolate.get(), try_catch.Exception());
+        }
+        auto module = maybe_module.ToLocalChecked();
+        if (!module->InstantiateModule(context, nullptr).FromMaybe(false)) {
+            throw_runtime_error(isolate.get(), try_catch.Exception());
+        }
+        if (module->Evaluate(context).IsEmpty()) {
+            throw_runtime_error(isolate.get(), try_catch.Exception());
+        }
+        return call_default_export(isolate.get(), context, module);
     }
 
     /**
@@ -148,7 +174,9 @@ class V8System {
         }
         auto default_export = maybe_default_export.ToLocalChecked();
         if (!default_export->IsAsyncFunction()) {
-            throw std::runtime_error("default export is not an async function");
+            throw std::runtime_error(
+                "default export is not an async function. got: " +
+                std::string(*v8::String::Utf8Value(isolate, default_export)));
         }
         // call the default export
         auto func = default_export.As<v8::Function>();
