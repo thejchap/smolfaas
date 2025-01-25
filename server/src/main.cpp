@@ -28,7 +28,7 @@ class V8System {
     /**
      * takes a script source code and compiles it+runs it
      */
-    static std::string compile_and_run(const std::string& src) {
+    static std::string compile_and_invoke(const std::string& src) {
         // create a new isolate
         v8::Isolate::CreateParams create_params;
         create_params.array_buffer_allocator =
@@ -58,11 +58,21 @@ class V8System {
     }
 
     /**
+     * restore the v8 heap from a snapshot
+     * into an isolate and run the module
+     */
+    static std::string invoke_snapshot(
+        py::bytes
+            snapshot_bytes) {   // NOLINT(misc-unused-parameters,performance-unnecessary-value-param)
+        return "not implemented";
+    }
+
+    /**
      * compile source code
      * take snapshot of the v8 heap after the module is loaded and compiled
      * return snapshot so app can save the deployment for later invocations
      */
-    static py::bytes compile(const std::string& src) {
+    static py::bytes compile_to_snapshot(const std::string& src) {
         // this uses a different isolate setup than normal script compilation
         v8::SnapshotCreator snapshot_creator;
         auto* isolate = snapshot_creator.GetIsolate();
@@ -184,6 +194,7 @@ class V8System {
 PYBIND11_MODULE(_core, m) {   // NOLINT(misc-use-anonymous-namespace)
     py::class_<V8System>(m, "V8System")
         .def(py::init<>())
-        .def_static("compile_and_run", &V8System::compile_and_run)
-        .def_static("compile", &V8System::compile);
+        .def_static("compile_and_invoke", &V8System::compile_and_invoke)
+        .def_static("compile_to_snapshot", &V8System::compile_to_snapshot)
+        .def_static("invoke_snapshot", &V8System::invoke_snapshot);
 }

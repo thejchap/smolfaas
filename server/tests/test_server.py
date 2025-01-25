@@ -16,7 +16,7 @@ def test_root(client: TestClient):
     assert res.text == "tinyfaas"
 
 
-def test_invoke(client: TestClient):
+def test_invoke_script(client: TestClient):
     src = """
 export default async function handler() {
     return "hello";
@@ -28,7 +28,7 @@ export default async function handler() {
     assert body["result"] == "hello"
 
 
-def test_compile(client: TestClient):
+def test_function_e2e(client: TestClient):
     src = """
 export default async function handler() {
     return "hello";
@@ -36,3 +36,7 @@ export default async function handler() {
     """
     res = client.post("/functions/hello/deploy", json={"source": src})
     assert res.status_code == 201, res.text
+
+    res = client.post("/functions/hello/invoke")
+    assert res.status_code == 200, res.text
+    assert res.json()["result"] == "not implemented"

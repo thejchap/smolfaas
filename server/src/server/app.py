@@ -1,9 +1,9 @@
 import sqlite3
 from contextlib import asynccontextmanager, contextmanager
 from functools import cache
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, Response, status
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
@@ -76,7 +76,7 @@ def invoke_source(
     """
     compile and run script on the fly
     """
-    result = v8.compile_and_run(req.source)
+    result = v8.compile_and_invoke(req.source)
     return SourceInvocationResponse(result=result)
 
 
@@ -98,12 +98,11 @@ def deploy(
     req: FunctionDeployRequest,
     v8: Annotated[V8System, Depends(get_v8)],
     conn: Annotated[sqlite3.Connection, Depends(get_conn)],
-    response: Response,
 ):
     """
     compile script and snapshot v8 heap, store in sqlite for invocation
     """
-    snapshot = v8.compile(req.source)
+    snapshot = v8.compile_to_snapshot(req.source)
     cur = conn.cursor()
     cur.execute(
         """
@@ -115,3 +114,41 @@ DO UPDATE SET snapshot = excluded.snapshot;
         (function_id, snapshot),
     )
     return FunctionDeployResponse()
+
+
+class FunctionInvokeRequest(BaseModel):
+    payload: dict[str, Any] | None = None
+
+
+class FunctionInvokeResponse(BaseModel):
+    result: str | None = None
+
+
+@APP.post("/functions/{function_id}/invoke", response_model=FunctionInvokeResponse)
+def invoke_function(
+    function_id: str,
+    v8: Annotated[V8System, Depends(get_v8)],
+    conn: Annotated[sqlite3.Connection, Depends(get_conn)],
+    req: FunctionInvokeRequest | None = None,
+):
+    """
+    lookup snapshot from sqlite, restore v8 heap, run script
+    """
+    cur = conn.cursor()
+    cur.execute(
+        """
+SELECT snapshot
+FROM function
+WHERE function_id = ?
+LIMIT 1;
+    """,
+        (function_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    blob = row["snapshot"]
+    if not blob:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+    res = v8.invoke_snapshot(blob)
+    return FunctionInvokeResponse(result=res)

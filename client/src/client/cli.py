@@ -10,23 +10,22 @@ CLI = typer.Typer()
 DEFAULT_BASE_URL = "http://localhost:8000"
 
 
+ModulePath = Annotated[
+    Path,
+    typer.Argument(
+        ..., help="path to the module to be run. must export a default function."
+    ),
+]
+BaseURL = Annotated[
+    str,
+    typer.Option(..., help="base url of the tinyfaas server", envvar="BASE_URL"),
+]
+
+
 @CLI.command()
 def invoke(
-    module_path: Annotated[
-        Path,
-        typer.Argument(
-            ...,
-            help="path to the module to be run. must export a default function.",
-        ),
-    ],
-    base_url: Annotated[
-        str,
-        typer.Option(
-            ...,
-            help="base url of the tinyfaas server",
-            envvar="BASE_URL",
-        ),
-    ] = DEFAULT_BASE_URL,
+    module_path: ModulePath,
+    base_url: BaseURL = DEFAULT_BASE_URL,
 ):
     with open(module_path) as f:
         src = f.read()
@@ -46,21 +45,8 @@ def deploy(
         str,
         typer.Argument(..., help="function id to deploy the module as"),
     ],
-    module_path: Annotated[
-        Path,
-        typer.Argument(
-            ...,
-            help="path to the module to be run. must export a default function.",
-        ),
-    ],
-    base_url: Annotated[
-        str,
-        typer.Option(
-            ...,
-            help="base url of the tinyfaas server",
-            envvar="BASE_URL",
-        ),
-    ] = DEFAULT_BASE_URL,
+    module_path: ModulePath,
+    base_url: BaseURL = DEFAULT_BASE_URL,
 ):
     with open(module_path) as f:
         src = f.read()
