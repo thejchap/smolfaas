@@ -39,6 +39,7 @@ def migrate():
             """
 CREATE TABLE IF NOT EXISTS function (
     function_id TEXT PRIMARY KEY,
+    source TEXT NOT NULL,
     snapshot BLOB NOT NULL
 );
     """
@@ -76,7 +77,7 @@ def invoke_source(
     """
     compile and run script on the fly
     """
-    result = v8.compile_and_invoke(req.source)
+    result = v8.compile_and_invoke_source(req.source)
     return SourceInvocationResponse(result=result)
 
 
@@ -88,11 +89,7 @@ class FunctionDeployResponse(BaseModel):
     ok: bool = True
 
 
-@APP.post(
-    "/functions/{function_id}/deploy",
-    response_model=FunctionDeployResponse,
-    status_code=status.HTTP_201_CREATED,
-)
+@APP.post("/functions/{function_id}/deploy", response_model=FunctionDeployResponse)
 def deploy(
     function_id: str,
     req: FunctionDeployRequest,
@@ -102,16 +99,18 @@ def deploy(
     """
     compile script and snapshot v8 heap, store in sqlite for invocation
     """
-    snapshot = v8.compile_to_snapshot(req.source)
+    snapshot = v8.compile_source_to_snapshot(req.source)
     cur = conn.cursor()
     cur.execute(
         """
-INSERT INTO function (function_id, snapshot)
-VALUES (?, ?)
+INSERT INTO function (function_id, snapshot, source)
+VALUES (?, ?, ?)
 ON CONFLICT (function_id)
-DO UPDATE SET snapshot = excluded.snapshot;
+DO UPDATE SET
+snapshot = excluded.snapshot,
+source = excluded.source;
     """,
-        (function_id, snapshot),
+        (function_id, snapshot, req.source),
     )
     return FunctionDeployResponse()
 
@@ -137,7 +136,7 @@ def invoke_function(
     cur = conn.cursor()
     cur.execute(
         """
-SELECT snapshot
+SELECT snapshot, source
 FROM function
 WHERE function_id = ?
 LIMIT 1;
@@ -147,8 +146,9 @@ LIMIT 1;
     row = cur.fetchone()
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    blob = row["snapshot"]
-    if not blob:
+    snapshot = row["snapshot"]
+    source = row["source"]
+    if not snapshot or not source:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
-    res = v8.invoke_snapshot(blob)
+    res = v8.invoke_source_with_snapshot(source, snapshot)
     return FunctionInvokeResponse(result=res)

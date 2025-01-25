@@ -27,7 +27,7 @@ class V8System {
     /**
      * takes a script source code and compiles it+runs it
      */
-    static std::string compile_and_invoke(const std::string& src) {
+    static std::string compile_and_invoke_source(const std::string& src) {
         // create a new isolate
         v8::Isolate::CreateParams create_params;
         create_params.array_buffer_allocator =
@@ -60,7 +60,8 @@ class V8System {
      * restore the v8 heap from a snapshot
      * into an isolate and run the module
      */
-    static std::string invoke_snapshot(const std::string& snapshot_bytes) {
+    static std::string invoke_source_with_snapshot(
+        const std::string& source, const std::string& snapshot_bytes) {
         // restore snapshot into create params for isolate
         v8::StartupData snapshot(snapshot_bytes.c_str(), snapshot_bytes.size());
         v8::Isolate::CreateParams create_params;
@@ -77,20 +78,20 @@ class V8System {
         // enter context
         v8::Context::Scope context_scope(context);
         v8::TryCatch try_catch(isolate.get());
-        // call default export
-        auto maybe_module =
-            load_module(to_v8_string(isolate.get(), ""), context);
+        // load module
+        auto source_code = to_v8_string(isolate.get(), source);
+        auto maybe_module = load_module(source_code, context);
         if (maybe_module.IsEmpty()) {
             throw_runtime_error(isolate.get(), try_catch.Exception());
         }
-        auto module = maybe_module.ToLocalChecked();
-        if (!module->InstantiateModule(context, nullptr).FromMaybe(false)) {
+        auto mod = maybe_module.ToLocalChecked();
+        if (!mod->InstantiateModule(context, nullptr).FromMaybe(false)) {
             throw_runtime_error(isolate.get(), try_catch.Exception());
         }
-        if (module->Evaluate(context).IsEmpty()) {
+        if (mod->Evaluate(context).IsEmpty()) {
             throw_runtime_error(isolate.get(), try_catch.Exception());
         }
-        return call_default_export(isolate.get(), context, module);
+        return call_default_export(isolate.get(), context, mod);
     }
 
     /**
@@ -98,7 +99,7 @@ class V8System {
      * take snapshot of the v8 heap after the module is loaded and compiled
      * return snapshot so app can save the deployment for later invocations
      */
-    static py::bytes compile_to_snapshot(const std::string& src) {
+    static py::bytes compile_source_to_snapshot(const std::string& src) {
         // this uses a different isolate setup than normal script compilation
         v8::SnapshotCreator snapshot_creator;
         auto* isolate = snapshot_creator.GetIsolate();
@@ -222,7 +223,10 @@ class V8System {
 PYBIND11_MODULE(_core, m) {   // NOLINT(misc-use-anonymous-namespace)
     py::class_<V8System>(m, "V8System")
         .def(py::init<>())
-        .def_static("compile_and_invoke", &V8System::compile_and_invoke)
-        .def_static("compile_to_snapshot", &V8System::compile_to_snapshot)
-        .def_static("invoke_snapshot", &V8System::invoke_snapshot);
+        .def_static("compile_and_invoke_source",
+                    &V8System::compile_and_invoke_source)
+        .def_static("compile_source_to_snapshot",
+                    &V8System::compile_source_to_snapshot)
+        .def_static("invoke_source_with_snapshot",
+                    &V8System::invoke_source_with_snapshot);
 }

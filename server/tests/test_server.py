@@ -35,8 +35,8 @@ export default async function handler() {
 };
     """
     res = client.post("/functions/hello/deploy", json={"source": src})
-    assert res.status_code == 201, res.text
+    assert res.status_code == 200, res.text
 
     res = client.post("/functions/hello/invoke")
     assert res.status_code == 200, res.text
-    assert res.json()["result"] == "not implemented"
+    assert res.json()["result"] == "hello"
