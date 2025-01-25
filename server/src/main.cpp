@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "lrucache.h"
+
 namespace py = pybind11;
 
 /**
@@ -136,6 +138,10 @@ class V8System {
      * class instance
      */
     std::unique_ptr<v8::Platform> platform_;
+    /**
+     * keep 8 isolates warm
+     */
+    LRUCache<std::string, v8::Isolate*> isolate_cache{8};
 
     /**
      * load a module from source code in the given context
