@@ -1,4 +1,12 @@
-# server
+# tinyfaas
+a tiny faas platform. inspired by CloudFlare Workers/Vercel Edge Functions. adventures in V8.
+
+## overview
+this is an educational project aimed at better understanding V8 and serverless compute.
+
+## architecture
+### server
+wip
 
 ## notes
 
