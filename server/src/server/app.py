@@ -150,5 +150,5 @@ LIMIT 1;
     source = row["source"]
     if not snapshot or not source:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
-    res = v8.invoke_source_with_snapshot(source, snapshot)
+    res = v8.invoke_function(function_id, source, snapshot)
     return FunctionInvokeResponse(result=res)

@@ -59,11 +59,23 @@ class V8System {
     }
 
     /**
-     * restore the v8 heap from a snapshot
-     * into an isolate and run the module
+     * if there is a warm isolate in the cache for this function,
+     * use it to call the function. otherwise, restore the snapshot
+     * and run the function
      */
-    static std::string invoke_source_with_snapshot(
-        const std::string& source, const std::string& snapshot_bytes) {
+    std::string invoke_function(const std::string& function_id,
+                                const std::string& source,
+                                const std::string& snapshot_bytes) {
+        // first check for warm isolate, if we find one, create a context in it
+        // and execute the code in that context it
+        auto* cached_isolate = isolate_cache_.get(function_id);
+        if (cached_isolate) {
+            v8::Isolate::Scope isolate_scope(cached_isolate);
+            v8::HandleScope handle_scope(cached_isolate);
+            v8::Local<v8::Context> context = v8::Context::New(cached_isolate);
+            return invoke_source_in_context(source, context);
+        }
+        // we don't have a cached isolate. create one and put it in the cache
         // restore snapshot into create params for isolate
         v8::StartupData snapshot(snapshot_bytes.c_str(), snapshot_bytes.size());
         v8::Isolate::CreateParams create_params;
@@ -73,27 +85,38 @@ class V8System {
         // create isolate
         std::unique_ptr<v8::Isolate, decltype(&dispose_isolate)> isolate(
             v8::Isolate::New(create_params), dispose_isolate);
-        // create scope and context
+        // cache it
+        isolate_cache_.put(function_id, isolate.get());
         v8::Isolate::Scope isolate_scope(isolate.get());
         v8::HandleScope handle_scope(isolate.get());
         v8::Local<v8::Context> context = v8::Context::New(isolate.get());
-        // enter context
+        return invoke_source_in_context(source, context);
+    }
+
+    /**
+     * invoke a function in the given context
+     * switches to the given context before invoking the function
+     */
+    static std::string invoke_source_in_context(
+        const std::string& source, v8::Local<v8::Context> context) {
+        auto* isolate = context->GetIsolate();
+        v8::Isolate::Scope isolate_scope(isolate);
+        v8::HandleScope handle_scope(isolate);
         v8::Context::Scope context_scope(context);
-        v8::TryCatch try_catch(isolate.get());
-        // load module
-        auto source_code = to_v8_string(isolate.get(), source);
+        v8::TryCatch try_catch(isolate);
+        auto source_code = to_v8_string(isolate, source);
         auto maybe_module = load_module(source_code, context);
         if (maybe_module.IsEmpty()) {
-            throw_runtime_error(isolate.get(), try_catch.Exception());
+            throw_runtime_error(isolate, try_catch.Exception());
         }
         auto mod = maybe_module.ToLocalChecked();
         if (!mod->InstantiateModule(context, nullptr).FromMaybe(false)) {
-            throw_runtime_error(isolate.get(), try_catch.Exception());
+            throw_runtime_error(isolate, try_catch.Exception());
         }
         if (mod->Evaluate(context).IsEmpty()) {
-            throw_runtime_error(isolate.get(), try_catch.Exception());
+            throw_runtime_error(isolate, try_catch.Exception());
         }
-        return call_default_export(isolate.get(), context, mod);
+        return call_default_export(isolate, context, mod);
     }
 
     /**
@@ -139,9 +162,9 @@ class V8System {
      */
     std::unique_ptr<v8::Platform> platform_;
     /**
-     * keep 8 isolates warm
+     * keep most recent 8 isolates warm for function invocations
      */
-    LRUCache<std::string, v8::Isolate*> isolate_cache{8};
+    LRUCache<std::string, v8::Isolate*> isolate_cache_{8};
 
     /**
      * load a module from source code in the given context
@@ -233,6 +256,5 @@ PYBIND11_MODULE(_core, m) {   // NOLINT(misc-use-anonymous-namespace)
                     &V8System::compile_and_invoke_source)
         .def_static("compile_source_to_snapshot",
                     &V8System::compile_source_to_snapshot)
-        .def_static("invoke_source_with_snapshot",
-                    &V8System::invoke_source_with_snapshot);
+        .def("invoke_function", &V8System::invoke_function);
 }

@@ -3,6 +3,11 @@
 - getting cmake working with vscode was funky - uv setup/ `uv run` worked out of the box, needed to tweak cmakelists a bit for vscode to pick up pybind11
 - was an adventure getting v8 built for linux (docker) and getting cmake configured to build on both platforms. homebrew packages an older build of v8 that is NOT the one that ships with `libnode-dev` which was the easiest way to install on linux, and my app wouldn't compile on the latter due to some breaking api changes
 - man, c++ makes me appreciate rust - about 50% of the errors i had to track down during development were extremely unhelpful. segfaults, exceptions with missing error descriptions, one line error codes with no explanation - just a tough experience.
+## todo
+- [ ] json to and from invocations
+- [ ] store deployments
+- [ ] logging
+- [ ] exception handling
 ## resources
 - https://chromium.googlesource.com/v8/v8.git/+/4.5.103.9/test/cctest/test-serialize.cc#661
 - https://v8.dev/blog/custom-startup-snapshots
