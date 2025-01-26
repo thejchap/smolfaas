@@ -36,6 +36,21 @@ export default async function handler() {
     assert body["result"] == "hello"
 
 
+@pytest.mark.skip
+def test_invoke_script_with_payload(client: TestClient):
+    src = """
+export default async function handler(payload) {
+    return {
+        result: "hello " + payload.name
+    };
+};
+    """
+    res = client.post("/invoke", json={"source": src, "payload": {"name": "world"}})
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["result"] == "hello world"
+
+
 def test_function_e2e(client: TestClient):
     src = """
 let count = 0;

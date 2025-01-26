@@ -10,6 +10,7 @@
 
 -   [ ] json to and from invocations
 -   [ ] exception handling
+-   [ ] resource limits
 -   [ ] log from functions
 -   [x] cache compiled module
 -   [x] store deployments
