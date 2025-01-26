@@ -36,8 +36,9 @@ export default async function handler() {
 
 def test_function_e2e(client: TestClient):
     src = """
+let count = 0;
 export default async function handler() {
-    return "hello";
+    return "hello" + count++;
 };
     """
     res = client.post("/functions", json={"name": "hello"})
@@ -45,10 +46,10 @@ export default async function handler() {
     function_id = res.json()["function"]["id"]
     res = client.post(f"/functions/{function_id}/deployments", json={"source": src})
     # test warm isolate cache
-    for _ in range(3):
+    for i in range(3):
         res = client.post(f"/functions/{function_id}/invocations")
         assert res.status_code == 200, res.text
-        assert res.json()["result"] == "hello"
+        assert res.json()["result"] == f"hello{i}"
     src2 = """
 export default async function handler() {
     return "world";
