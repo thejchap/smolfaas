@@ -12,6 +12,9 @@
 		"ruff.organizeImports": true,
 		"ruff.fixAll": true,
 		"ruff.lint.enable": true,
+        "[markdown]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
 		"files.associations": {
 			"__bit_reference": "cpp",
 			"__hash_table": "cpp",
