@@ -32,12 +32,7 @@ def invoke(
     with open(module_path) as f:
         src = f.read()
     res = requests.post(f"{base_url}/invoke", json={"source": src})
-    if not res.ok:
-        try:
-            typer.secho(res.json()["error"]["message"], fg="red")
-        except Exception:
-            typer.secho(res.text, fg="red")
-        raise typer.Exit(1)
+    res.raise_for_status()
     print(json.dumps(res.json(), indent=2))
 
 
@@ -55,12 +50,7 @@ def deploy_function(
     res = requests.post(
         f"{base_url}/functions/{function_id}/deploy", json={"source": src}
     )
-    if not res.ok:
-        try:
-            typer.secho(res.json()["error"]["message"], fg="red")
-        except Exception:
-            typer.secho(res.text, fg="red")
-        raise typer.Exit(1)
+    res.raise_for_status()
     print(json.dumps(res.json(), indent=2))
 
 
@@ -73,10 +63,5 @@ def invoke_function(
     base_url: BaseURL = DEFAULT_BASE_URL,
 ):
     res = requests.post(f"{base_url}/functions/{function_id}/invoke")
-    if not res.ok:
-        try:
-            typer.secho(res.json()["error"]["message"], fg="red")
-        except Exception:
-            typer.secho(res.text, fg="red")
-        raise typer.Exit(1)
+    res.raise_for_status()
     print(json.dumps(res.json(), indent=2))

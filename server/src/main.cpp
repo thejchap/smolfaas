@@ -27,7 +27,8 @@ class V8System {
         v8::V8::InitializePlatform(platform_.get());
         v8::V8::Initialize();
         logging_ = py::module::import("logging");
-        logging_.attr("info")("V8 initialized");
+        logger_ = logging_.attr("getLogger")("uvicorn.error");
+        logger_.attr("info")("V8 initialized");
     }
 
     /**
@@ -68,18 +69,18 @@ class V8System {
      */
     std::string invoke_function(const std::string& function_id,
                                 const std::string& source) {
-        logging_.attr("info")("invoking function: " + function_id);
+        logger_.attr("info")("invoking function: " + function_id);
         auto* warm_isolate = get_isolate_from_pool(function_id);
         if (warm_isolate) {
             // we have a cached isolate. use it to invoke the function
-            logging_.attr("info")("isolate pool hit for function: " +
-                                  function_id);
+            logger_.attr("info")("isolate pool hit for function: " +
+                                 function_id);
             v8::Isolate::Scope isolate_scope(warm_isolate);
             v8::HandleScope handle_scope(warm_isolate);
             v8::Local<v8::Context> context = v8::Context::New(warm_isolate);
             return invoke_source_in_context(source, context);
         }
-        logging_.attr("info")("isolate pool miss for function: " + function_id);
+        logger_.attr("info")("isolate pool miss for function: " + function_id);
         // we don't have a cached isolate. create one and put it in the cache
         v8::Isolate::CreateParams create_params;
         create_params.array_buffer_allocator =
@@ -89,11 +90,11 @@ class V8System {
         v8::HandleScope handle_scope(isolate);
         v8::Local<v8::Context> context = v8::Context::New(isolate);
         auto result = invoke_source_in_context(source, context);
-        logging_.attr("info")("putting warm isolate in pool for function: " +
-                              function_id);
+        logger_.attr("info")("putting warm isolate in pool for function: " +
+                             function_id);
         put_isolate_in_pool(function_id, isolate);
-        logging_.attr("info")("warm isolate put in pool for function: " +
-                              function_id);
+        logger_.attr("info")("warm isolate put in pool for function: " +
+                             function_id);
         return result;
     }
 
@@ -132,16 +133,17 @@ class V8System {
     /**
      * pool of warm isolates
      */
-    int pool_capacity_ = 1;
+    int pool_capacity_ = 128;
     std::list<std::pair<std::string, v8::Isolate*>> pool_cache_;
     std::unordered_map<
         std::string,
         typename std::list<std::pair<std::string, v8::Isolate*>>::iterator>
         pool_lookup_;
     /**
-     * python logging module
+     * python logging module and logger instance
      */
     py::object logging_;
+    py::object logger_;
 
     v8::Isolate* get_isolate_from_pool(const std::string& function_id) {
         auto it = pool_lookup_.find(function_id);

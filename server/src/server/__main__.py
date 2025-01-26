@@ -1,5 +1,5 @@
 import uvicorn
 
-from server import APP
+from server import API
 
-uvicorn.run(APP, host="0.0.0.0", port=8000)
+uvicorn.run(API, host="0.0.0.0", port=8000)
