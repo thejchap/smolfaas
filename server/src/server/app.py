@@ -126,9 +126,6 @@ def invoke_function(
     conn: Annotated[sqlite3.Connection, Depends(get_conn)],
     req: FunctionInvokeRequest | None = None,
 ):
-    """
-    lookup snapshot from sqlite, restore v8 heap, run script
-    """
     cur = conn.cursor()
     cur.execute(
         """

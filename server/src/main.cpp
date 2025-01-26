@@ -64,8 +64,7 @@ class V8System {
 
     /**
      * if there is a warm isolate in the cache for this function,
-     * use it to call the function. otherwise, restore the snapshot
-     * and run the function
+     * use it to call the function. otherwise, create a new isolate
      */
     std::string invoke_function(const std::string& function_id,
                                 const std::string& source) {
@@ -131,7 +130,7 @@ class V8System {
      */
     std::unique_ptr<v8::Platform> platform_;
     /**
-     * keep most recent 8 isolates warm for function invocations
+     * pool of warm isolates
      */
     int pool_capacity_ = 1;
     std::list<std::pair<std::string, v8::Isolate*>> pool_cache_;
