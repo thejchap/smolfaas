@@ -5,8 +5,9 @@
 - man, c++ makes me appreciate rust - about 50% of the errors i had to track down during development were extremely unhelpful. segfaults, exceptions with missing error descriptions, one line error codes with no explanation - just a tough experience.
 ## todo
 - [ ] json to and from invocations
-- [ ] store deployments
-- [ ] logging
+- [ ] cache compiled module
+- [x] store deployments
+- [x] logging
 - [ ] exception handling
 ## resources
 - https://chromium.googlesource.com/v8/v8.git/+/4.5.103.9/test/cctest/test-serialize.cc#661
