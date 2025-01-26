@@ -133,6 +133,7 @@ class V8System {
     /**
      * keep most recent 8 isolates warm for function invocations
      */
+    int pool_capacity_ = 1;
     std::list<std::pair<std::string, v8::Isolate*>> pool_cache_;
     std::unordered_map<
         std::string,
@@ -154,9 +155,10 @@ class V8System {
 
     void put_isolate_in_pool(const std::string& function_id,
                              v8::Isolate* isolate) {
-        if (pool_cache_.size() >= 8) {
+        if (pool_cache_.size() >= pool_capacity_) {
             auto& entry = pool_cache_.back();
             auto key = std::get<0>(entry);
+            logging_.attr("info")("evicting isolate for function: " + key);
             auto* isolate = std::get<1>(entry);
             dispose_isolate(isolate);
             pool_lookup_.erase(key);
