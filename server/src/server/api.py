@@ -1,3 +1,4 @@
+import json
 import logging
 import sqlite3
 import time
@@ -8,7 +9,7 @@ from typing import Annotated, Any
 
 from faker import Faker
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field, PrivateAttr
 
 from server.utils import SQL, get_conn, get_v8, migrate, new_primary_key
@@ -58,11 +59,7 @@ class SourceInvocationRequest(BaseModel):
     source: str
 
 
-class SourceInvocationResponse(BaseModel):
-    result: str
-
-
-@API.post("/invoke", response_model=SourceInvocationResponse)
+@API.post("/invoke", response_class=JSONResponse)
 def invoke_source(
     req: SourceInvocationRequest,
     v8: Annotated[V8System, Depends(get_v8)],
@@ -71,7 +68,7 @@ def invoke_source(
     compile and run script on the fly
     """
     result = v8.compile_and_invoke_source(req.source)
-    return SourceInvocationResponse(result=result)
+    return JSONResponse(content=json.loads(result))
 
 
 """
@@ -165,11 +162,7 @@ invoke a function
 """
 
 
-class FunctionInvokeResponse(BaseModel):
-    result: str | None = None
-
-
-@API.post("/functions/{function_id}/invocations", response_model=FunctionInvokeResponse)
+@API.post("/functions/{function_id}/invocations", response_class=JSONResponse)
 def invoke_function(
     function_id: str,
     v8: Annotated[V8System, Depends(get_v8)],
@@ -197,7 +190,7 @@ def invoke_function(
         deployment_id,
         request,
     )
-    return FunctionInvokeResponse(result=res)
+    return JSONResponse(content=json.loads(res))
 
 
 """

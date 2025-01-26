@@ -293,7 +293,27 @@ class V8System {
         }
         // wait for the promise to resolve
         auto result = promise.As<v8::Promise>()->Result();
-        return *v8::String::Utf8Value(isolate, result);
+        // assert the result is an object
+        if (!result->IsObject()) {
+            throw std::runtime_error("promise result is not a valid object");
+        }
+        // json stringify object and return the resulting string
+        auto json_stringify =
+            context->Global()
+                ->Get(context, to_v8_string(isolate, "JSON"))
+                .ToLocalChecked()
+                .As<v8::Object>()
+                ->Get(context, to_v8_string(isolate, "stringify"))
+                .ToLocalChecked()
+                .As<v8::Function>();
+        v8::Local<v8::Value> args[1] = {result};
+        auto maybe_json_string =
+            json_stringify->Call(context, context->Global(), 1, args);
+        if (maybe_json_string.IsEmpty()) {
+            throw std::runtime_error("failed to stringify the result");
+        }
+        auto json_string = maybe_json_string.ToLocalChecked();
+        return *v8::String::Utf8Value(isolate, json_string);
     }
 
     static v8::Local<v8::String> to_v8_string(v8::Isolate* isolate,

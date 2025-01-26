@@ -25,7 +25,9 @@ def test_root(client: TestClient):
 def test_invoke_script(client: TestClient):
     src = """
 export default async function handler() {
-    return "hello";
+    return {
+        result: "hello"
+    };
 };
     """
     res = client.post("/invoke", json={"source": src})
@@ -38,7 +40,9 @@ def test_function_e2e(client: TestClient):
     src = """
 let count = 0;
 export default async function handler() {
-    return "hello" + count++;
+    return {
+        result: "hello" + count++
+    }
 };
     """
     res = client.post("/functions", json={"name": "hello"})
@@ -52,7 +56,9 @@ export default async function handler() {
         assert res.json()["result"] == f"hello{i}"
     src2 = """
 export default async function handler() {
-    return "world";
+    return {
+        result: "world"
+    }
 };
     """
     res = client.post(f"/functions/{function_id}/deployments", json={"source": src2})
