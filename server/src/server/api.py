@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, PrivateAttr
 
-from server.utils import get_conn, get_v8, migrate, new_primary_key
+from server.utils import SQL, get_conn, get_v8, migrate, new_primary_key
 
 from ._core import V8System
 
@@ -104,15 +104,7 @@ def create_function(
     conn: Annotated[sqlite3.Connection, Depends(get_conn)],
 ):
     cur = conn.cursor()
-    cur.execute(
-        """
-INSERT INTO function (id, name)
-VALUES (?, ?)
-RETURNING id, name
-;
-    """,
-        (req._id, req.name),
-    )
+    cur.execute(SQL["create_function"], (req._id, req.name))
     row = cur.fetchone()
     return FunctionCreateResponse(function=CreatedFunction.model_validate(dict(row)))
 

@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from contextlib import contextmanager
 from functools import cache
@@ -9,6 +10,27 @@ from ulid import ULID
 from server._core import V8System
 
 SQLITE_URL = "tmp/db.sqlite3"
+
+
+def _load_sql() -> dict[str, str]:
+    """
+    load queries from queries.sql into a dict
+    """
+    res: dict[str, str] = {}
+    name = ""
+    with open(os.path.join(os.path.dirname(__file__), "queries.sql")) as f:
+        for line in f.readlines():
+            if line.startswith("-- query:begin "):
+                name = line.split(" ")[-1].strip()
+                res[name] = ""
+            elif line.startswith("-- query:end"):
+                res[name] = res[name].strip()
+            else:
+                res[name] += line
+    return res
+
+
+SQL = _load_sql()
 
 
 @cache
@@ -35,25 +57,7 @@ def migrate():
     set up sqlite db on startup
     """
     with get_conn_ctx() as conn:
-        conn.executescript(
-            """
-PRAGMA foreign_keys = ON;
-CREATE TABLE IF NOT EXISTS function (
-    id CHAR(29) PRIMARY KEY NOT NULL,
-    name TEXT NOT NULL,
-    live_deployment_id TEXT REFERENCES deployment (id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-CREATE TABLE IF NOT EXISTS deployment (
-    id CHAR(29) PRIMARY KEY,
-    function_id TEXT REFERENCES function (id) ON DELETE CASCADE NOT NULL,
-    source TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-    """
-        )
+        conn.executescript(SQL["migrate"])
 
 
 PKPrefix = Annotated[str, Len(2)]

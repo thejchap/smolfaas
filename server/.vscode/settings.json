@@ -47,5 +47,8 @@
     },
     "C_Cpp.codeAnalysis.clangTidy.enabled": true,
     "C_Cpp.codeAnalysis.runAutomatically": true,
-    "mypy-type-checker.reportingScope": "workspace"
+    "mypy-type-checker.reportingScope": "workspace",
+    "[sql]": {
+        "editor.defaultFormatter": "mtxr.sqltools"
+    }
 }
