@@ -1,4 +1,4 @@
-default: brew install
+default: brew install check test
 checkpoint:
 	@cd .. && $(MAKE) checkpoint
 dev:

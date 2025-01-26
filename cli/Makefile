@@ -1,3 +1,4 @@
+default: install check test
 checkpoint:
 	@cd .. && $(MAKE) checkpoint
 test:
