@@ -11,5 +11,7 @@ install:
 	@uv sync
 example-invoke:
 	@uv run client invoke examples/basic.js
-example-deploy:
-	@uv run client deploy hello-world examples/basic.js
+example-function-invoke:
+	@uv run client functions invoke hello-world
+example-function-deploy:
+	@uv run client functions deploy hello-world examples/basic.js

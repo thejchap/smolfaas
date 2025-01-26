@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from contextlib import asynccontextmanager, contextmanager
 from functools import cache
@@ -8,6 +9,8 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from ._core import V8System
+
+logging.basicConfig(level=logging.INFO)
 
 SQLITE_URL = "tmp/db.sqlite3"
 
