@@ -185,10 +185,43 @@ def invoke_function(
             detail="no live deployment",
         )
     source = row["source"]
-    if not source:
+    deployment_id = row["deployment_id"]
+    if not source or not deployment_id:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="missing source code",
+            detail="missing source code or deployment id",
         )
-    res = v8.invoke_function(function_id, source, request)
+    res = v8.invoke_function(
+        function_id,
+        source,
+        deployment_id,
+        request,
+    )
     return FunctionInvokeResponse(result=res)
+
+
+"""
+
+fetch a function
+
+"""
+
+
+class FunctionGetResponse(BaseModel):
+    function: CreatedFunction
+
+
+@API.get("/functions/{function_id}", response_model=FunctionGetResponse)
+def get_function(
+    function_id: str,
+    conn: Annotated[sqlite3.Connection, Depends(get_conn)],
+):
+    cur = conn.cursor()
+    cur.execute(SQL["get_function"], (function_id,))
+    row = cur.fetchone()
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="function not found",
+        )
+    return FunctionGetResponse(function=CreatedFunction.model_validate(dict(row)))

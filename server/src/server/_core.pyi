@@ -7,5 +7,8 @@ class V8System:
     def compile_and_invoke_source(source: str) -> str: ...
     @staticmethod
     def invoke_function(
-        function_id: str, source: str, payload: dict[Any, Any] | None = None
+        function_id: str,
+        source: str,
+        live_deployment_id: str,
+        payload: dict[Any, Any] | None = None,
     ) -> str: ...

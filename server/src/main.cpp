@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 namespace py = pybind11;
 
@@ -70,6 +71,7 @@ class V8System {
      */
     std::string invoke_function(
         const std::string& function_id, const std::string& source,
+        const std::string& live_deployment_id,
         const std::optional<py::dict>& payload = std::nullopt) {
         if (payload) {
             logger_.attr("info")("invoking function: " + function_id +
@@ -79,19 +81,33 @@ class V8System {
             logger_.attr("info")("invoking function: " + function_id);
         }
         {
+            // check if we have a warm isolate in the pool
             auto* warm_function = get_warm_function_from_pool(function_id);
+            // check if the warm isolate is for the same deployment as the
+            // current live deployment
             if (warm_function) {
                 auto* warm_isolate = warm_function->isolate;
                 // we have a cached isolate. use it to invoke the function
                 logger_.attr("info")("isolate pool hit for function: " +
                                      function_id);
-                v8::Isolate::Scope isolate_scope(warm_isolate);
-                v8::HandleScope handle_scope(warm_isolate);
-                v8::Local<v8::Context> context = v8::Context::New(warm_isolate);
-                v8::Context::Scope context_scope(context);
-                v8::Local<v8::Module> warm_mod =
-                    warm_function->mod.Get(warm_isolate);
-                return call_default_export(warm_isolate, context, warm_mod);
+                logger_.attr("info")("warm deployment id: " +
+                                     warm_function->deployment_id);
+                logger_.attr("info")("live deployment id: " +
+                                     live_deployment_id);
+                if (warm_function->deployment_id == live_deployment_id) {
+                    logger_.attr("info")(
+                        "using warm isolate from pool for function (same "
+                        "deployment): " +
+                        function_id);
+                    v8::Isolate::Scope isolate_scope(warm_isolate);
+                    v8::HandleScope handle_scope(warm_isolate);
+                    v8::Local<v8::Context> context =
+                        v8::Context::New(warm_isolate);
+                    v8::Context::Scope context_scope(context);
+                    v8::Local<v8::Module> warm_mod =
+                        warm_function->mod.Get(warm_isolate);
+                    return call_default_export(warm_isolate, context, warm_mod);
+                }
             }
         }
         logger_.attr("info")("isolate pool miss for function: " + function_id);
@@ -110,7 +126,8 @@ class V8System {
         auto result = call_default_export(isolate, context, mod);
         logger_.attr("info")("putting warm isolate in pool for function: " +
                              function_id);
-        put_warm_function_to_pool(function_id, isolate, mod);
+        put_warm_function_to_pool(function_id, live_deployment_id, isolate,
+                                  mod);
         logger_.attr("info")("warm isolate put in pool for function: " +
                              function_id);
         return result;
@@ -125,9 +142,13 @@ class V8System {
     struct WarmFunction {
         v8::Isolate* isolate;
         v8::Global<v8::Module> mod;
+        std::string deployment_id;
 
-        WarmFunction(v8::Isolate* isolate, v8::Local<v8::Module> mod)
-            : isolate(isolate), mod(isolate, mod) {}
+        WarmFunction(v8::Isolate* isolate, v8::Local<v8::Module> mod,
+                     std::string deployment_id)
+            : isolate(isolate),
+              mod(isolate, mod),
+              deployment_id(std::move(deployment_id)) {}
     };
 
     /**
@@ -139,10 +160,11 @@ class V8System {
      * pool of warm isolates
      */
     int pool_capacity_ = 128;
-    std::list<std::pair<std::string, WarmFunction*>> pool_cache_;
+    std::list<std::pair<std::string, std::unique_ptr<WarmFunction>>>
+        pool_cache_;
     std::unordered_map<
-        std::string,
-        typename std::list<std::pair<std::string, WarmFunction*>>::iterator>
+        std::string, typename std::list<std::pair<
+                         std::string, std::unique_ptr<WarmFunction>>>::iterator>
         pool_lookup_;
     /**
      * python logging module and logger instance
@@ -154,26 +176,49 @@ class V8System {
         auto it = pool_lookup_.find(function_id);
         if (it != pool_lookup_.end()) {
             auto& entry = it->second->second;
-            return entry;
+            return entry.get();
         }
         return nullptr;
     }
 
     void put_warm_function_to_pool(const std::string& function_id,
+                                   const std::string& deployment_id,
                                    v8::Isolate* isolate,
                                    v8::Local<v8::Module> mod) {
         if (pool_cache_.size() >= pool_capacity_) {
             auto& entry = pool_cache_.back();
-            auto key = std::get<0>(entry);
-            logging_.attr("info")("evicting isolate for function: " + key);
-            auto* warm = std::get<1>(entry);
-            dispose_isolate(warm->isolate);
-            warm->mod.Reset();
-            pool_lookup_.erase(key);
-            pool_cache_.pop_back();
+            auto key = entry.first;
+            evict_function_from_pool(key);
         }
-        pool_cache_.emplace_front(function_id, new WarmFunction(isolate, mod));
+        pool_cache_.emplace_front(
+            function_id,
+            std::make_unique<WarmFunction>(isolate, mod, deployment_id));
         pool_lookup_[function_id] = pool_cache_.begin();
+    }
+
+    /**
+     * evict a function from the pool
+     * dispose isolate
+     * reset the global module handle
+     */
+    void evict_function_from_pool(const std::string& function_id) {
+        auto it = pool_lookup_.find(function_id);
+        if (it == pool_lookup_.end()) {
+            return;
+        }
+
+        auto& entry = it->second->second;
+        logger_.attr("info")("evicting warm function with deployment_id: " +
+                             entry->deployment_id +
+                             " for function_id: " + function_id);
+
+        // Dispose of the isolate and reset the global module handle
+        dispose_isolate(entry->isolate);
+        entry->mod.Reset();
+
+        // Remove from the pool
+        pool_cache_.erase(it->second);
+        pool_lookup_.erase(it);
     }
 
     /**

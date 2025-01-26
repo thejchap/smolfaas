@@ -40,12 +40,22 @@ SET live_deployment_id = ?,
 WHERE id = ?;
 -- query:end
 -- query:begin get_live_deployment_for_function
-SELECT dp.id,
+SELECT dp.id AS deployment_id,
     function_id,
     source
 FROM deployment dp
     JOIN function fn ON dp.function_id = fn.id
     AND fn.live_deployment_id = dp.id
 WHERE fn.id = ?
+LIMIT 1;
+-- query:end
+-- query:begin get_function
+SELECT id,
+    name,
+    live_deployment_id,
+    created_at,
+    updated_at
+FROM function
+WHERE id = ?
 LIMIT 1;
 -- query:end

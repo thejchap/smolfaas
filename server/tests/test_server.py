@@ -49,6 +49,21 @@ export default async function handler() {
         res = client.post(f"/functions/{function_id}/invocations")
         assert res.status_code == 200, res.text
         assert res.json()["result"] == "hello"
+    src2 = """
+export default async function handler() {
+    return "world";
+};
+    """
+    res = client.post(f"/functions/{function_id}/deployments", json={"source": src2})
+    assert res.status_code == 200, res.text
+    deployment_id = res.json()["deployment"]["id"]
+    res = client.get(f"/functions/{function_id}")
+    assert res.status_code == 200, res.text
+    function = res.json()["function"]
+    assert function["live_deployment_id"] == deployment_id
+    res = client.post(f"/functions/{function_id}/invocations")
+    assert res.status_code == 200, res.text
+    assert res.json()["result"] == "world"
 
 
 def test_create_function(client: TestClient):
