@@ -50,7 +50,7 @@ class V8System {
         v8::Context::Scope context_scope(context);
         v8::TryCatch try_catch(isolate.get());
         auto source = to_v8_string(isolate.get(), src);
-        auto maybe_module = load_module(source, context);
+        auto maybe_module = compile_module(source, context);
         if (maybe_module.IsEmpty()) {
             throw_runtime_error(isolate.get(), try_catch.Exception());
         }
@@ -78,15 +78,21 @@ class V8System {
         } else {
             logger_.attr("info")("invoking function: " + function_id);
         }
-        auto* warm_isolate = get_isolate_from_pool(function_id);
-        if (warm_isolate) {
-            // we have a cached isolate. use it to invoke the function
-            logger_.attr("info")("isolate pool hit for function: " +
-                                 function_id);
-            v8::Isolate::Scope isolate_scope(warm_isolate);
-            v8::HandleScope handle_scope(warm_isolate);
-            v8::Local<v8::Context> context = v8::Context::New(warm_isolate);
-            return invoke_source_in_context(source, context);
+        {
+            auto* warm_isolate = get_isolate_from_pool(function_id);
+            if (warm_isolate) {
+                // we have a cached isolate. use it to invoke the function
+                logger_.attr("info")("isolate pool hit for function: " +
+                                     function_id);
+                v8::Isolate::Scope isolate_scope(warm_isolate);
+                v8::HandleScope handle_scope(warm_isolate);
+                v8::Local<v8::Context> context = v8::Context::New(warm_isolate);
+                v8::Context::Scope context_scope(context);
+                v8::TryCatch try_catch(warm_isolate);
+                auto source_code = to_v8_string(warm_isolate, source);
+                auto mod = compile_and_evaluate_module(source_code, context);
+                return call_default_export(warm_isolate, context, mod);
+            }
         }
         logger_.attr("info")("isolate pool miss for function: " + function_id);
         // we don't have a cached isolate. create one and put it in the cache
@@ -97,37 +103,17 @@ class V8System {
         v8::Isolate::Scope isolate_scope(isolate);
         v8::HandleScope handle_scope(isolate);
         v8::Local<v8::Context> context = v8::Context::New(isolate);
-        auto result = invoke_source_in_context(source, context);
+        v8::Context::Scope context_scope(context);
+        v8::TryCatch try_catch(isolate);
+        auto source_code = to_v8_string(isolate, source);
+        auto mod = compile_and_evaluate_module(source_code, context);
+        auto result = call_default_export(isolate, context, mod);
         logger_.attr("info")("putting warm isolate in pool for function: " +
                              function_id);
         put_isolate_in_pool(function_id, isolate);
         logger_.attr("info")("warm isolate put in pool for function: " +
                              function_id);
         return result;
-    }
-
-    /**
-     * invoke a function in the given context
-     * switches to the given context before invoking the function
-     */
-    static std::string invoke_source_in_context(
-        const std::string& source, v8::Local<v8::Context> context) {
-        auto* isolate = context->GetIsolate();
-        v8::Context::Scope context_scope(context);
-        v8::TryCatch try_catch(isolate);
-        auto source_code = to_v8_string(isolate, source);
-        auto maybe_module = load_module(source_code, context);
-        if (maybe_module.IsEmpty()) {
-            throw_runtime_error(isolate, try_catch.Exception());
-        }
-        auto mod = maybe_module.ToLocalChecked();
-        if (!mod->InstantiateModule(context, nullptr).FromMaybe(false)) {
-            throw_runtime_error(isolate, try_catch.Exception());
-        }
-        if (mod->Evaluate(context).IsEmpty()) {
-            throw_runtime_error(isolate, try_catch.Exception());
-        }
-        return call_default_export(isolate, context, mod);
     }
 
    private:
@@ -178,8 +164,8 @@ class V8System {
     /**
      * load a module from source code in the given context
      */
-    static v8::MaybeLocal<v8::Module> load_module(v8::Local<v8::String> code,
-                                                  v8::Local<v8::Context> cx) {
+    static v8::MaybeLocal<v8::Module> compile_module(
+        v8::Local<v8::String> code, v8::Local<v8::Context> cx) {
         // compile the module
         v8::ScriptOrigin origin(to_v8_string(cx->GetIsolate(), "module"), 0, 0,
                                 false, -1, v8::Local<v8::Value>(), false, false,
@@ -187,6 +173,24 @@ class V8System {
         v8::ScriptCompiler::Source source(code, origin);
         auto res = v8::ScriptCompiler::CompileModule(cx->GetIsolate(), &source);
         return res;
+    }
+
+    static v8::Local<v8::Module> compile_and_evaluate_module(
+        v8::Local<v8::String> source, v8::Local<v8::Context> context) {
+        auto* isolate = context->GetIsolate();
+        v8::TryCatch try_catch(isolate);
+        auto maybe_module = compile_module(source, context);
+        if (maybe_module.IsEmpty()) {
+            throw_runtime_error(isolate, try_catch.Exception());
+        }
+        auto mod = maybe_module.ToLocalChecked();
+        if (!mod->InstantiateModule(context, nullptr).FromMaybe(false)) {
+            throw_runtime_error(isolate, try_catch.Exception());
+        }
+        if (mod->Evaluate(context).IsEmpty()) {
+            throw_runtime_error(isolate, try_catch.Exception());
+        }
+        return mod;
     }
 
     /**
