@@ -1,4 +1,4 @@
-import os
+import tempfile
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,11 +9,11 @@ from server.utils import get_settings, new_primary_key
 
 @pytest.fixture(scope="module")
 def client():
-    settings = get_settings()
-    settings.sqlite_url = "tmp/db.test.sqlite3"
-    with TestClient(API) as client:
-        yield client
-    os.remove(settings.sqlite_url)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        settings = get_settings()
+        settings.sqlite_url = f"{tmpdir}/db.test.sqlite3"
+        with TestClient(API) as client:
+            yield client
 
 
 def test_root(client: TestClient):

@@ -20,6 +20,10 @@ class Settings(BaseSettings):
 def _load_sql() -> dict[str, str]:
     """
     load queries from queries.sql into a dict
+    allows for a bunch of queries in one sql file that look like:
+    -- query:begin name
+    SELECT * FROM table;
+    -- query:end
     """
     res: dict[str, str] = {}
     name = ""
@@ -40,17 +44,28 @@ SQL = _load_sql()
 
 @cache
 def get_v8():
+    """
+    ensure only one V8System instance is created
+    and have control over when it is created
+    """
     return V8System()
 
 
 @cache
 def get_settings():
+    """
+    load settings from environment variables + defaults
+    """
     return Settings()
 
 
 def get_conn(
     settings: Annotated[Settings, Depends(get_settings)],
 ):
+    """
+    get a connection to the sqlite db
+    if any statements fail, the transaction is rolled back
+    """
     conn = sqlite3.connect(settings.sqlite_url)
     conn.row_factory = sqlite3.Row
     try:
@@ -66,7 +81,7 @@ get_conn_ctx = contextmanager(get_conn)
 
 def migrate():
     """
-    set up sqlite db on startup
+    run script to create tables and indexes
     """
     with get_conn_ctx(get_settings()) as conn:
         conn.executescript(SQL["migrate"])
