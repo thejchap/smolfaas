@@ -1,3 +1,4 @@
+default: brew install
 checkpoint:
 	@cd .. && $(MAKE) checkpoint
 dev:
