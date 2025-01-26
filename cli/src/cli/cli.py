@@ -35,9 +35,8 @@ def invoke(
 ):
     with open(module_path) as f:
         src = f.read()
-    res = requests.post(f"{base_url}/invoke", json={"source": src})
-    res.raise_for_status()
-    print(json.dumps(res.json(), indent=2))
+    res = _api_request("POST", f"{base_url}/invoke", {"source": src})
+    print(json.dumps(res, indent=2))
 
 
 @FUNCTIONS_CLI.command(name="deploy", help="deploy a function")
@@ -48,11 +47,10 @@ def deploy_function(
 ):
     with open(module_path) as f:
         src = f.read()
-    res = requests.post(
-        f"{base_url}/functions/{function_id}/deployments", json={"source": src}
+    res = _api_request(
+        "POST", f"{base_url}/functions/{function_id}/deployments", {"source": src}
     )
-    res.raise_for_status()
-    print(json.dumps(res.json(), indent=2))
+    print(json.dumps(res, indent=2))
 
 
 @FUNCTIONS_CLI.command(name="invoke", help="invoke a function")
@@ -60,9 +58,8 @@ def invoke_function(
     function_id: FunctionId,
     base_url: BaseURL = DEFAULT_BASE_URL,
 ):
-    res = requests.post(f"{base_url}/functions/{function_id}/invocations")
-    res.raise_for_status()
-    print(json.dumps(res.json(), indent=2))
+    res = _api_request("POST", f"{base_url}/functions/{function_id}/invocations")
+    print(json.dumps(res, indent=2))
 
 
 @FUNCTIONS_CLI.command(name="create", help="create a function")
@@ -77,10 +74,16 @@ def create_functions(
     body = {}
     if name:
         body["name"] = name
-    res = requests.post(f"{base_url}/functions", json=body)
-    if res.status_code == 422:
-        print(json.dumps(res.json(), indent=2))
-        typer.Exit(code=1)
-    else:
-        res.raise_for_status()
-    print(json.dumps(res.json(), indent=2))
+    res = _api_request("POST", f"{base_url}/functions", body)
+    print(json.dumps(res, indent=2))
+
+
+def _api_request(method: str, url: str, body: dict | None = None, **kwargs):
+    res = requests.request(method, url, json=body, **kwargs)
+    if not res.ok:
+        if res.status_code == 422:
+            print(json.dumps(res.json(), indent=2))
+            raise typer.Exit(code=1)
+        else:
+            res.raise_for_status()
+    return res.json()
