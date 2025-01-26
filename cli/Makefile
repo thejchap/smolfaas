@@ -10,8 +10,8 @@ check:
 install:
 	@uv sync
 example-invoke:
-	@uv run client invoke examples/basic.js
+	@uv run cli invoke examples/basic.js
 example-function-invoke:
-	@uv run client functions invoke hello-world
+	@uv run cli functions invoke hello-world
 example-function-deploy:
-	@uv run client functions deploy hello-world examples/basic.js
+	@uv run cli functions deploy hello-world examples/basic.js

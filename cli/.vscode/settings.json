@@ -38,7 +38,8 @@
         ".venv": true,
         ".vscode": true,
         ".pytest_cache": true,
-        ".mypy_cache": true
+        ".mypy_cache": true,
+        ".ruff_cache": true
     },
     "search.exclude": {
         "**/build": true,
@@ -47,5 +48,6 @@
     },
     "C_Cpp.codeAnalysis.clangTidy.enabled": true,
     "C_Cpp.codeAnalysis.runAutomatically": true,
-    "mypy-type-checker.reportingScope": "workspace"
+    "mypy-type-checker.reportingScope": "workspace",
+    "cmake.sourceDirectory": "/Users/justinchapman/src/tinyfaas/server"
 }

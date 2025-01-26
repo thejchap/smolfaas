@@ -1,5 +1,5 @@
 [project]
-name = "client"
+name = "cli"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-client = "client:main"
+cli = "cli:main"
 
 [build-system]
 requires = ["hatchling"]

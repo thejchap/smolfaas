@@ -91,13 +91,13 @@ class V8System {
         create_params.array_buffer_allocator =
             v8::ArrayBuffer::Allocator::NewDefaultAllocator();
         // create isolate
-        std::unique_ptr<v8::Isolate, decltype(&dispose_isolate)> isolate(
-            v8::Isolate::New(create_params), dispose_isolate);
+        v8::Isolate* isolate = v8::Isolate::New(create_params);
+
         // cache it
-        isolate_cache_.put(function_id, isolate.get());
-        v8::Isolate::Scope isolate_scope(isolate.get());
-        v8::HandleScope handle_scope(isolate.get());
-        v8::Local<v8::Context> context = v8::Context::New(isolate.get());
+        isolate_cache_.put(function_id, isolate);
+        v8::Isolate::Scope isolate_scope(isolate);
+        v8::HandleScope handle_scope(isolate);
+        v8::Local<v8::Context> context = v8::Context::New(isolate);
         return invoke_source_in_context(source, context);
     }
 
