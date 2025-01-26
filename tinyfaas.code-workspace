@@ -78,11 +78,12 @@
 		},
 		"sqltools.useNodeRuntime": true,
 		"sqltools.connections": [
+
 			{
 				"previewLimit": 50,
 				"driver": "SQLite",
 				"database": "tmp/db.sqlite3",
-				"name": "dev"
+				"name": "dev",
 			}
 		]
 	}

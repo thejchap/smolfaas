@@ -113,8 +113,6 @@ class V8System {
     static std::string invoke_source_in_context(
         const std::string& source, v8::Local<v8::Context> context) {
         auto* isolate = context->GetIsolate();
-        v8::Isolate::Scope isolate_scope(isolate);
-        v8::HandleScope handle_scope(isolate);
         v8::Context::Scope context_scope(context);
         v8::TryCatch try_catch(isolate);
         auto source_code = to_v8_string(isolate, source);
