@@ -3,11 +3,12 @@
 #include <pybind11/pybind11.h>
 #include <v8.h>
 
+#include <iostream>
+#include <list>
 #include <memory>
 #include <stdexcept>
 #include <string>
-
-#include "lrucache.h"
+#include <unordered_map>
 
 namespace py = pybind11;
 
@@ -67,40 +68,34 @@ class V8System {
      * and run the function
      */
     std::string invoke_function(const std::string& function_id,
-                                const std::string& source,
-                                const std::string& snapshot_bytes) {
+                                const std::string& source) {
         logging_.attr("info")("invoking function: " + function_id);
-        // first check for warm isolate, if we find one, create a context in it
-        // and execute the code in that context it
-        auto* cached_isolate = std::get<0>(isolate_cache_.get(function_id));
-        if (cached_isolate) {
-            logging_.attr("info")("isolate cache hit for function: " +
+        auto* warm_isolate = get_isolate_from_pool(function_id);
+        if (warm_isolate) {
+            // we have a cached isolate. use it to invoke the function
+            logging_.attr("info")("isolate pool hit for function: " +
                                   function_id);
-            v8::Isolate::Scope isolate_scope(cached_isolate);
-            v8::HandleScope handle_scope(cached_isolate);
-            v8::Local<v8::Context> context = v8::Context::New(cached_isolate);
+            v8::Isolate::Scope isolate_scope(warm_isolate);
+            v8::HandleScope handle_scope(warm_isolate);
+            v8::Local<v8::Context> context = v8::Context::New(warm_isolate);
             return invoke_source_in_context(source, context);
         }
-        logging_.attr("info")("isolate cache miss for function: " +
-                              function_id);
+        logging_.attr("info")("isolate pool miss for function: " + function_id);
         // we don't have a cached isolate. create one and put it in the cache
-        // restore snapshot into create params for isolate
-        auto snapshot_data = std::make_shared<std::string>(snapshot_bytes);
-        v8::StartupData snapshot(snapshot_data->c_str(), snapshot_data->size());
         v8::Isolate::CreateParams create_params;
-        create_params.snapshot_blob = &snapshot;
         create_params.array_buffer_allocator =
             v8::ArrayBuffer::Allocator::NewDefaultAllocator();
-        // create isolate
         v8::Isolate* isolate = v8::Isolate::New(create_params);
-
-        // cache it
-        isolate_cache_.put(function_id,
-                           std::make_tuple(isolate, *snapshot_data));
         v8::Isolate::Scope isolate_scope(isolate);
         v8::HandleScope handle_scope(isolate);
         v8::Local<v8::Context> context = v8::Context::New(isolate);
-        return invoke_source_in_context(source, context);
+        auto result = invoke_source_in_context(source, context);
+        logging_.attr("info")("putting warm isolate in pool for function: " +
+                              function_id);
+        put_isolate_in_pool(function_id, isolate);
+        logging_.attr("info")("warm isolate put in pool for function: " +
+                              function_id);
+        return result;
     }
 
     /**
@@ -129,42 +124,6 @@ class V8System {
         return call_default_export(isolate, context, mod);
     }
 
-    /**
-     * compile source code
-     * take snapshot of the v8 heap after the module is loaded and compiled
-     * return snapshot so app can save the deployment for later invocations
-     */
-    static py::bytes compile_source_to_snapshot(const std::string& src) {
-        // this uses a different isolate setup than normal script compilation
-        v8::SnapshotCreator snapshot_creator;
-        auto* isolate = snapshot_creator.GetIsolate();
-        {
-            v8::Isolate::Scope isolate_scope(isolate);
-            v8::HandleScope handle_scope(isolate);
-            v8::Local<v8::Context> context = v8::Context::New(isolate);
-            snapshot_creator.SetDefaultContext(context);
-            v8::Context::Scope context_scope(context);
-            v8::TryCatch try_catch(isolate);
-            auto source = to_v8_string(isolate, src);
-            auto maybe_module = load_module(source, context);
-            if (maybe_module.IsEmpty()) {
-                throw_runtime_error(isolate, try_catch.Exception());
-            }
-            auto module = maybe_module.ToLocalChecked();
-            if (!module->InstantiateModule(context, nullptr).FromMaybe(false)) {
-                throw_runtime_error(isolate, try_catch.Exception());
-            }
-            if (module->Evaluate(context).IsEmpty()) {
-                throw_runtime_error(isolate, try_catch.Exception());
-            }
-        }
-        v8::StartupData snapshot = snapshot_creator.CreateBlob(
-            v8::SnapshotCreator::FunctionCodeHandling::kKeep);
-        py::bytes snapshot_bytes(snapshot.data, snapshot.raw_size);
-        delete[] snapshot.data;
-        return snapshot_bytes;
-    }
-
    private:
     /**
      * v8 platform instance. this needs to be kept alive for the lifetime of the
@@ -174,13 +133,38 @@ class V8System {
     /**
      * keep most recent 8 isolates warm for function invocations
      */
-    LRUCache<std::string, std::tuple<v8::Isolate*, std::string>> isolate_cache_{
-        8};
-
+    std::list<std::pair<std::string, v8::Isolate*>> pool_cache_;
+    std::unordered_map<
+        std::string,
+        typename std::list<std::pair<std::string, v8::Isolate*>>::iterator>
+        pool_lookup_;
     /**
      * python logging module
      */
     py::object logging_;
+
+    v8::Isolate* get_isolate_from_pool(const std::string& function_id) {
+        auto it = pool_lookup_.find(function_id);
+        if (it != pool_lookup_.end()) {
+            auto& entry = it->second->second;
+            return entry;
+        }
+        return nullptr;
+    }
+
+    void put_isolate_in_pool(const std::string& function_id,
+                             v8::Isolate* isolate) {
+        if (pool_cache_.size() >= 8) {
+            auto& entry = pool_cache_.back();
+            auto key = std::get<0>(entry);
+            auto* isolate = std::get<1>(entry);
+            dispose_isolate(isolate);
+            pool_lookup_.erase(key);
+            pool_cache_.pop_back();
+        }
+        pool_cache_.emplace_front(function_id, isolate);
+        pool_lookup_[function_id] = pool_cache_.begin();
+    }
 
     /**
      * load a module from source code in the given context
@@ -253,13 +237,10 @@ class V8System {
     }
 
     /**
-     * dispose the isolate and its array buffer allocator
+     * dispose the isolate
      * this is called when the unique_ptr of the isolate goes out of scope
      */
-    static void dispose_isolate(v8::Isolate* isolate) {
-        isolate->Dispose();
-        delete v8::ArrayBuffer::Allocator::NewDefaultAllocator();
-    }
+    static void dispose_isolate(v8::Isolate* isolate) { isolate->Dispose(); }
 };
 
 /**
@@ -270,7 +251,5 @@ PYBIND11_MODULE(_core, m) {   // NOLINT(misc-use-anonymous-namespace)
         .def(py::init<>())
         .def_static("compile_and_invoke_source",
                     &V8System::compile_and_invoke_source)
-        .def_static("compile_source_to_snapshot",
-                    &V8System::compile_source_to_snapshot)
         .def("invoke_function", &V8System::invoke_function);
 }

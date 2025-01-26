@@ -42,8 +42,7 @@ def migrate():
             """
 CREATE TABLE IF NOT EXISTS function (
     function_id TEXT PRIMARY KEY,
-    source TEXT NOT NULL,
-    snapshot BLOB NOT NULL
+    source TEXT NOT NULL
 );
     """
         )
@@ -96,24 +95,18 @@ class FunctionDeployResponse(BaseModel):
 def deploy(
     function_id: str,
     req: FunctionDeployRequest,
-    v8: Annotated[V8System, Depends(get_v8)],
     conn: Annotated[sqlite3.Connection, Depends(get_conn)],
 ):
-    """
-    compile script and snapshot v8 heap, store in sqlite for invocation
-    """
-    snapshot = v8.compile_source_to_snapshot(req.source)
     cur = conn.cursor()
     cur.execute(
         """
-INSERT INTO function (function_id, snapshot, source)
-VALUES (?, ?, ?)
+INSERT INTO function (function_id, source)
+VALUES (?, ?)
 ON CONFLICT (function_id)
 DO UPDATE SET
-snapshot = excluded.snapshot,
 source = excluded.source;
     """,
-        (function_id, snapshot, req.source),
+        (function_id, req.source),
     )
     return FunctionDeployResponse()
 
@@ -139,7 +132,7 @@ def invoke_function(
     cur = conn.cursor()
     cur.execute(
         """
-SELECT snapshot, source
+SELECT source
 FROM function
 WHERE function_id = ?
 LIMIT 1;
@@ -149,9 +142,8 @@ LIMIT 1;
     row = cur.fetchone()
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    snapshot = row["snapshot"]
     source = row["source"]
-    if not snapshot or not source:
+    if not source:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
-    res = v8.invoke_function(function_id, source, snapshot)
+    res = v8.invoke_function(function_id, source)
     return FunctionInvokeResponse(result=res)
