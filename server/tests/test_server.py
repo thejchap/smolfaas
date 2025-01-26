@@ -1,14 +1,19 @@
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 
 from server.api import API
-from server.utils import new_primary_key
+from server.utils import get_settings, new_primary_key
 
 
 @pytest.fixture(scope="module")
 def client():
+    settings = get_settings()
+    settings.sqlite_url = "tmp/db.test.sqlite3"
     with TestClient(API) as client:
         yield client
+    os.remove(settings.sqlite_url)
 
 
 def test_root(client: TestClient):
@@ -51,6 +56,9 @@ def test_create_function(client: TestClient):
     assert function["id"].startswith("fn-")
     assert len(function["id"]) == 29
     assert function["name"] == "hello-world"
+    assert "created_at" in function
+    assert "updated_at" in function
+    assert "live_deployment_id" in function
 
 
 def test_pk():

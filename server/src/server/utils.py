@@ -5,11 +5,16 @@ from functools import cache
 from typing import Annotated
 
 from annotated_types import Len
+from fastapi import Depends
+from pydantic import Field
+from pydantic_settings import BaseSettings
 from ulid import ULID
 
 from server._core import V8System
 
-SQLITE_URL = "tmp/db.sqlite3"
+
+class Settings(BaseSettings):
+    sqlite_url: str = Field(default="tmp/db.sqlite3")
 
 
 def _load_sql() -> dict[str, str]:
@@ -38,12 +43,19 @@ def get_v8():
     return V8System()
 
 
-def get_conn():
-    conn = sqlite3.connect(SQLITE_URL)
+@cache
+def get_settings():
+    return Settings()
+
+
+def get_conn(
+    settings: Annotated[Settings, Depends(get_settings)],
+):
+    conn = sqlite3.connect(settings.sqlite_url)
     conn.row_factory = sqlite3.Row
     try:
         with conn:
-            conn.execute("PRAGMA foreign_keys = ON")
+            conn.execute(SQL["foreign_keys_on"])
             yield conn
     finally:
         conn.close()
@@ -56,7 +68,7 @@ def migrate():
     """
     set up sqlite db on startup
     """
-    with get_conn_ctx() as conn:
+    with get_conn_ctx(get_settings()) as conn:
         conn.executescript(SQL["migrate"])
 
 

@@ -2,8 +2,11 @@ import logging
 import sqlite3
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime
+from random import randint
 from typing import Annotated, Any
 
+from faker import Faker
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, PrivateAttr
@@ -23,6 +26,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
+FAKER = Faker()
 API = FastAPI(lifespan=lifespan)
 
 
@@ -85,13 +89,21 @@ create a function
 
 
 class FunctionCreateRequest(BaseModel):
-    name: str
+    name: str = Field(
+        default_factory=lambda: "-".join(
+            FAKER.words(2, unique=True) + [str(randint(1000, 9999))]
+        ),
+        min_length=1,
+    )
     _id: str = PrivateAttr(default_factory=lambda: new_primary_key("fn"))
 
 
 class CreatedFunction(BaseModel):
     id_: str = Field(alias="id")
     name: str
+    created_at: datetime
+    updated_at: datetime
+    live_deployment_id: str | None = None
 
 
 class FunctionCreateResponse(BaseModel):
@@ -138,24 +150,9 @@ def deploy_function(
     conn: Annotated[sqlite3.Connection, Depends(get_conn)],
 ):
     cur = conn.cursor()
-    cur.execute(
-        """
-INSERT INTO deployment (id, function_id, source)
-VALUES (?, ?, ?)
-RETURNING id, function_id, source;
-    """,
-        (req._id, function_id, req.source),
-    )
+    cur.execute(SQL["create_deployment"], (req._id, function_id, req.source))
     row = cur.fetchone()
-    # update live_deployment_id
-    cur.execute(
-        """
-UPDATE function
-SET live_deployment_id = ?
-WHERE id = ?;
-    """,
-        (req._id, function_id),
-    )
+    cur.execute(SQL["update_live_deployment"], (req._id, function_id))
     return FunctionDeployResponse(
         deployment=CreatedDeployment.model_validate(dict(row))
     )
@@ -184,21 +181,13 @@ def invoke_function(
     req: FunctionInvokeRequest | None = None,
 ):
     cur = conn.cursor()
-    cur.execute(
-        """
-SELECT dp.id, function_id, source
-FROM deployment dp
-JOIN function fn
-ON dp.function_id = fn.id
-AND fn.live_deployment_id = dp.id
-WHERE fn.id = ?
-LIMIT 1;
-    """,
-        (function_id,),
-    )
+    cur.execute(SQL["get_live_deployment_for_function"], (function_id,))
     row = cur.fetchone()
     if not row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"no live deployment found for function {function_id}",
+        )
     source = row["source"]
     if not source:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)

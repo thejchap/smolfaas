@@ -1,3 +1,3 @@
 export default async function handler() {
-    return "hello";
+    return "hiya";
 }
