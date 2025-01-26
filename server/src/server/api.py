@@ -98,7 +98,7 @@ class FunctionCreateRequest(BaseModel):
     _id: str = PrivateAttr(default_factory=lambda: new_primary_key("fn"))
 
 
-class CreatedFunction(BaseModel):
+class FunctionRow(BaseModel):
     id_: str = Field(alias="id")
     name: str
     created_at: datetime
@@ -107,7 +107,7 @@ class CreatedFunction(BaseModel):
 
 
 class FunctionCreateResponse(BaseModel):
-    function: CreatedFunction
+    function: FunctionRow
 
 
 @API.post("/functions", response_model=FunctionCreateResponse)
@@ -118,7 +118,7 @@ def create_function(
     cur = conn.cursor()
     cur.execute(SQL["create_function"], (req._id, req.name))
     row = cur.fetchone()
-    return FunctionCreateResponse(function=CreatedFunction.model_validate(dict(row)))
+    return FunctionCreateResponse(function=FunctionRow.model_validate(dict(row)))
 
 
 """
@@ -208,7 +208,7 @@ fetch a function
 
 
 class FunctionGetResponse(BaseModel):
-    function: CreatedFunction
+    function: FunctionRow
 
 
 @API.get("/functions/{function_id}", response_model=FunctionGetResponse)
@@ -224,4 +224,4 @@ def get_function(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="function not found",
         )
-    return FunctionGetResponse(function=CreatedFunction.model_validate(dict(row)))
+    return FunctionGetResponse(function=FunctionRow.model_validate(dict(row)))
