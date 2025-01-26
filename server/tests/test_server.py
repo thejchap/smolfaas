@@ -45,11 +45,10 @@ export default async function handler() {
     function_id = res.json()["function"]["id"]
     res = client.post(f"/functions/{function_id}/deployments", json={"source": src})
     # test warm isolate cache
-    res = client.post(f"/functions/{function_id}/invocations")
-    res = client.post(f"/functions/{function_id}/invocations")
-    res = client.post(f"/functions/{function_id}/invocations")
-    assert res.status_code == 200, res.text
-    assert res.json()["result"] == "hello"
+    for _ in range(3):
+        res = client.post(f"/functions/{function_id}/invocations")
+        assert res.status_code == 200, res.text
+        assert res.json()["result"] == "hello"
 
 
 def test_create_function(client: TestClient):
