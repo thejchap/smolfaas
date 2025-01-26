@@ -79,8 +79,9 @@ class V8System {
             logger_.attr("info")("invoking function: " + function_id);
         }
         {
-            auto* warm_isolate = get_isolate_from_pool(function_id);
-            if (warm_isolate) {
+            auto* warm_function = get_warm_function_from_pool(function_id);
+            if (warm_function) {
+                auto* warm_isolate = warm_function->isolate;
                 // we have a cached isolate. use it to invoke the function
                 logger_.attr("info")("isolate pool hit for function: " +
                                      function_id);
@@ -88,10 +89,9 @@ class V8System {
                 v8::HandleScope handle_scope(warm_isolate);
                 v8::Local<v8::Context> context = v8::Context::New(warm_isolate);
                 v8::Context::Scope context_scope(context);
-                v8::TryCatch try_catch(warm_isolate);
-                auto source_code = to_v8_string(warm_isolate, source);
-                auto mod = compile_and_evaluate_module(source_code, context);
-                return call_default_export(warm_isolate, context, mod);
+                v8::Local<v8::Module> warm_mod =
+                    warm_function->mod.Get(warm_isolate);
+                return call_default_export(warm_isolate, context, warm_mod);
             }
         }
         logger_.attr("info")("isolate pool miss for function: " + function_id);
@@ -110,13 +110,26 @@ class V8System {
         auto result = call_default_export(isolate, context, mod);
         logger_.attr("info")("putting warm isolate in pool for function: " +
                              function_id);
-        put_isolate_in_pool(function_id, isolate);
+        put_warm_function_to_pool(function_id, isolate, mod);
         logger_.attr("info")("warm isolate put in pool for function: " +
                              function_id);
         return result;
     }
 
    private:
+    /**
+     * struct to hold the warm isolate and the compiled/evaluated module
+     * subsequent invocations for a warm function just call the default export
+     * of the compiled/evaluated module
+     */
+    struct WarmFunction {
+        v8::Isolate* isolate;
+        v8::Global<v8::Module> mod;
+
+        WarmFunction(v8::Isolate* isolate, v8::Local<v8::Module> mod)
+            : isolate(isolate), mod(isolate, mod) {}
+    };
+
     /**
      * v8 platform instance. this needs to be kept alive for the lifetime of the
      * class instance
@@ -126,10 +139,10 @@ class V8System {
      * pool of warm isolates
      */
     int pool_capacity_ = 128;
-    std::list<std::pair<std::string, v8::Isolate*>> pool_cache_;
+    std::list<std::pair<std::string, WarmFunction*>> pool_cache_;
     std::unordered_map<
         std::string,
-        typename std::list<std::pair<std::string, v8::Isolate*>>::iterator>
+        typename std::list<std::pair<std::string, WarmFunction*>>::iterator>
         pool_lookup_;
     /**
      * python logging module and logger instance
@@ -137,7 +150,7 @@ class V8System {
     py::object logging_;
     py::object logger_;
 
-    v8::Isolate* get_isolate_from_pool(const std::string& function_id) {
+    WarmFunction* get_warm_function_from_pool(const std::string& function_id) {
         auto it = pool_lookup_.find(function_id);
         if (it != pool_lookup_.end()) {
             auto& entry = it->second->second;
@@ -146,18 +159,20 @@ class V8System {
         return nullptr;
     }
 
-    void put_isolate_in_pool(const std::string& function_id,
-                             v8::Isolate* isolate) {
+    void put_warm_function_to_pool(const std::string& function_id,
+                                   v8::Isolate* isolate,
+                                   v8::Local<v8::Module> mod) {
         if (pool_cache_.size() >= pool_capacity_) {
             auto& entry = pool_cache_.back();
             auto key = std::get<0>(entry);
             logging_.attr("info")("evicting isolate for function: " + key);
-            auto* isolate = std::get<1>(entry);
-            dispose_isolate(isolate);
+            auto* warm = std::get<1>(entry);
+            dispose_isolate(warm->isolate);
+            warm->mod.Reset();
             pool_lookup_.erase(key);
             pool_cache_.pop_back();
         }
-        pool_cache_.emplace_front(function_id, isolate);
+        pool_cache_.emplace_front(function_id, new WarmFunction(isolate, mod));
         pool_lookup_[function_id] = pool_cache_.begin();
     }
 

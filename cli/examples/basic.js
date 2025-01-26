@@ -1,3 +1,6 @@
+let count = 0;
+
 export default async function handler() {
-    return "hiya";
+    count++;
+    return count.toString();
 }
