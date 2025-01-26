@@ -44,6 +44,9 @@ export default async function handler() {
     assert res.status_code == 200, res.text
     function_id = res.json()["function"]["id"]
     res = client.post(f"/functions/{function_id}/deployments", json={"source": src})
+    # test warm isolate cache
+    res = client.post(f"/functions/{function_id}/invocations")
+    res = client.post(f"/functions/{function_id}/invocations")
     res = client.post(f"/functions/{function_id}/invocations")
     assert res.status_code == 200, res.text
     assert res.json()["result"] == "hello"
