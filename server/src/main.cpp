@@ -1,6 +1,7 @@
 #include <libplatform/libplatform.h>
 #include <pybind11/embed.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <v8.h>
 
 #include <iostream>
@@ -67,9 +68,16 @@ class V8System {
      * if there is a warm isolate in the cache for this function,
      * use it to call the function. otherwise, create a new isolate
      */
-    std::string invoke_function(const std::string& function_id,
-                                const std::string& source) {
-        logger_.attr("info")("invoking function: " + function_id);
+    std::string invoke_function(
+        const std::string& function_id, const std::string& source,
+        const std::optional<py::dict>& payload = std::nullopt) {
+        if (payload) {
+            logger_.attr("info")("invoking function: " + function_id +
+                                 " with payload: " +
+                                 py::str(payload.value()).cast<std::string>());
+        } else {
+            logger_.attr("info")("invoking function: " + function_id);
+        }
         auto* warm_isolate = get_isolate_from_pool(function_id);
         if (warm_isolate) {
             // we have a cached isolate. use it to invoke the function

@@ -165,10 +165,6 @@ invoke a function
 """
 
 
-class FunctionInvokeRequest(BaseModel):
-    payload: dict[str, Any] | None = None
-
-
 class FunctionInvokeResponse(BaseModel):
     result: str | None = None
 
@@ -178,7 +174,7 @@ def invoke_function(
     function_id: str,
     v8: Annotated[V8System, Depends(get_v8)],
     conn: Annotated[sqlite3.Connection, Depends(get_conn)],
-    req: FunctionInvokeRequest | None = None,
+    request: dict[Any, Any] | None = None,
 ):
     cur = conn.cursor()
     cur.execute(SQL["get_live_deployment_for_function"], (function_id,))
@@ -186,10 +182,13 @@ def invoke_function(
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"no live deployment found for function {function_id}",
+            detail="no live deployment",
         )
     source = row["source"]
     if not source:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
-    res = v8.invoke_function(function_id, source)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="missing source code",
+        )
+    res = v8.invoke_function(function_id, source, request)
     return FunctionInvokeResponse(result=res)

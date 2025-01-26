@@ -26,6 +26,10 @@ FunctionId = Annotated[
     str,
     typer.Option(..., help="function id to deploy the module to"),
 ]
+FunctionInvocationPayload = Annotated[
+    str,
+    typer.Option(..., help="payload to pass to the function"),
+]
 
 
 @CLI.command(name="invoke", help="invoke a script")
@@ -35,7 +39,7 @@ def invoke(
 ):
     with open(module_path) as f:
         src = f.read()
-    res = _api_request("POST", f"{base_url}/invoke", {"source": src})
+    res = _api_request(method="POST", url=f"{base_url}/invoke", body={"source": src})
     print(json.dumps(res, indent=2))
 
 
@@ -48,7 +52,9 @@ def deploy_function(
     with open(module_path) as f:
         src = f.read()
     res = _api_request(
-        "POST", f"{base_url}/functions/{function_id}/deployments", {"source": src}
+        method="POST",
+        url=f"{base_url}/functions/{function_id}/deployments",
+        body={"source": src},
     )
     print(json.dumps(res, indent=2))
 
@@ -56,9 +62,15 @@ def deploy_function(
 @FUNCTIONS_CLI.command(name="invoke", help="invoke a function")
 def invoke_function(
     function_id: FunctionId,
+    payload: FunctionInvocationPayload | None = None,
     base_url: BaseURL = DEFAULT_BASE_URL,
 ):
-    res = _api_request("POST", f"{base_url}/functions/{function_id}/invocations")
+    payload_obj = json.loads(payload) if payload else None
+    res = _api_request(
+        method="POST",
+        url=f"{base_url}/functions/{function_id}/invocations",
+        body=payload_obj,
+    )
     print(json.dumps(res, indent=2))
 
 
@@ -74,12 +86,12 @@ def create_functions(
     body = {}
     if name:
         body["name"] = name
-    res = _api_request("POST", f"{base_url}/functions", body)
+    res = _api_request(method="POST", url=f"{base_url}/functions", body=body)
     print(json.dumps(res, indent=2))
 
 
 def _api_request(method: str, url: str, body: dict | None = None, **kwargs):
-    res = requests.request(method, url, json=body, **kwargs)
+    res = requests.request(method=method, url=url, json=body, **kwargs)
     if not res.ok:
         if res.status_code == 422:
             print(json.dumps(res.json(), indent=2))
