@@ -1,10 +1,11 @@
 import logging
 import sqlite3
+import time
 from contextlib import asynccontextmanager, contextmanager
 from functools import cache
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
@@ -56,6 +57,19 @@ async def lifespan(_: FastAPI):
 
 
 APP = FastAPI(lifespan=lifespan)
+
+
+@APP.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    process_time = time.perf_counter() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    # log ms
+    logging.info(
+        f"latency {request.method} {request.url.path} {response.status_code} {process_time * 1000:.2f}ms"
+    )
+    return response
 
 
 @APP.get("/", response_class=PlainTextResponse)
