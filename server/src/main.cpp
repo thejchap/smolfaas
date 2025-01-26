@@ -72,7 +72,7 @@ class V8System {
         logging_.attr("info")("invoking function: " + function_id);
         // first check for warm isolate, if we find one, create a context in it
         // and execute the code in that context it
-        auto* cached_isolate = isolate_cache_.get(function_id);
+        auto* cached_isolate = std::get<0>(isolate_cache_.get(function_id));
         if (cached_isolate) {
             logging_.attr("info")("isolate cache hit for function: " +
                                   function_id);
@@ -85,7 +85,8 @@ class V8System {
                               function_id);
         // we don't have a cached isolate. create one and put it in the cache
         // restore snapshot into create params for isolate
-        v8::StartupData snapshot(snapshot_bytes.c_str(), snapshot_bytes.size());
+        auto snapshot_data = std::make_shared<std::string>(snapshot_bytes);
+        v8::StartupData snapshot(snapshot_data->c_str(), snapshot_data->size());
         v8::Isolate::CreateParams create_params;
         create_params.snapshot_blob = &snapshot;
         create_params.array_buffer_allocator =
@@ -94,7 +95,8 @@ class V8System {
         v8::Isolate* isolate = v8::Isolate::New(create_params);
 
         // cache it
-        isolate_cache_.put(function_id, isolate);
+        isolate_cache_.put(function_id,
+                           std::make_tuple(isolate, *snapshot_data));
         v8::Isolate::Scope isolate_scope(isolate);
         v8::HandleScope handle_scope(isolate);
         v8::Local<v8::Context> context = v8::Context::New(isolate);
@@ -172,7 +174,8 @@ class V8System {
     /**
      * keep most recent 8 isolates warm for function invocations
      */
-    LRUCache<std::string, v8::Isolate*> isolate_cache_{8};
+    LRUCache<std::string, std::tuple<v8::Isolate*, std::string>> isolate_cache_{
+        8};
 
     /**
      * python logging module
