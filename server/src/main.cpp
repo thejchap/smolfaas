@@ -342,6 +342,54 @@ class V8System {
                     // TODO(thejchap): use the logger instance
                     py::print(*str);
                 }));
+        console->Set(
+            isolate, "error",
+            v8::FunctionTemplate::New(
+                isolate, [](const v8::FunctionCallbackInfo<v8::Value>& args) {
+                    if (args.Length() < 1) {
+                        return;
+                    }
+                    auto* isolate = args.GetIsolate();
+                    v8::String::Utf8Value str(isolate, args[0]);
+                    // TODO(thejchap): use the logger instance
+                    py::print(*str);
+                }));
+        console->Set(
+            isolate, "info",
+            v8::FunctionTemplate::New(
+                isolate, [](const v8::FunctionCallbackInfo<v8::Value>& args) {
+                    if (args.Length() < 1) {
+                        return;
+                    }
+                    auto* isolate = args.GetIsolate();
+                    v8::String::Utf8Value str(isolate, args[0]);
+                    // TODO(thejchap): use the logger instance
+                    py::print(*str);
+                }));
+        console->Set(
+            isolate, "warn",
+            v8::FunctionTemplate::New(
+                isolate, [](const v8::FunctionCallbackInfo<v8::Value>& args) {
+                    if (args.Length() < 1) {
+                        return;
+                    }
+                    auto* isolate = args.GetIsolate();
+                    v8::String::Utf8Value str(isolate, args[0]);
+                    // TODO(thejchap): use the logger instance
+                    py::print(*str);
+                }));
+        console->Set(
+            isolate, "debug",
+            v8::FunctionTemplate::New(
+                isolate, [](const v8::FunctionCallbackInfo<v8::Value>& args) {
+                    if (args.Length() < 1) {
+                        return;
+                    }
+                    auto* isolate = args.GetIsolate();
+                    v8::String::Utf8Value str(isolate, args[0]);
+                    // TODO(thejchap): use the logger instance
+                    py::print(*str);
+                }));
         auto maybe_bool = isolate->GetCurrentContext()->Global()->Set(
             isolate->GetCurrentContext(), to_v8_string(isolate, "console"),
             console->NewInstance(isolate->GetCurrentContext())
