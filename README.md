@@ -36,3 +36,4 @@ wip
 -   https://github.com/cloudflare/workerd/blob/00d8c87890edb836bfd1445157f2a3960eb5bc5e/src/workerd/jsg/setup.c%2B%2B#L155
 -   https://chromium.googlesource.com/v8/v8/+/branch-heads/11.9/samples/hello-world.cc
 -   https://gist.github.com/surusek/4c05e4dcac6b82d18a1a28e6742fc23e?permalink_comment_id=4472429
+-   https://github.com/nodejs/node-v0.x-archive/blob/master/lib/console.js
