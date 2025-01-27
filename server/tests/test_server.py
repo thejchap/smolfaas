@@ -39,7 +39,8 @@ export default async function handler() {
 def test_invoke_script_with_payload(client: TestClient):
     src = """
 export default async function handler(payload) {
-    print(payload);
+    console.log("hello");
+    console.log(payload);
     return {
         result: "hello " + payload.name
     };
@@ -48,7 +49,7 @@ export default async function handler(payload) {
     res = client.post("/invoke", json={"source": src, "payload": {"name": "world"}})
     assert res.status_code == 200, res.text
     body = res.json()
-    assert body["result"] == "hello world"
+    assert body.get("result") == "hello world", body
 
 
 def test_function_e2e(client: TestClient):

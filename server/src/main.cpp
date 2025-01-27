@@ -51,18 +51,8 @@ class V8System {
         v8::Context::Scope context_scope(context);
         v8::TryCatch try_catch(isolate.get());
         auto source = to_v8_string(isolate.get(), src);
-        auto maybe_module = compile_module(source, context);
-        if (maybe_module.IsEmpty()) {
-            throw_runtime_error(isolate.get(), try_catch.Exception());
-        }
-        auto module = maybe_module.ToLocalChecked();
-        if (!module->InstantiateModule(context, nullptr).FromMaybe(false)) {
-            throw_runtime_error(isolate.get(), try_catch.Exception());
-        }
-        if (module->Evaluate(context).IsEmpty()) {
-            throw_runtime_error(isolate.get(), try_catch.Exception());
-        }
-        return call_default_export(isolate.get(), context, module);
+        auto mod = compile_and_evaluate_module(source, context);
+        return call_default_export(isolate.get(), context, mod);
     }
 
     /**
@@ -239,6 +229,7 @@ class V8System {
         v8::Local<v8::String> source, v8::Local<v8::Context> context) {
         auto* isolate = context->GetIsolate();
         v8::TryCatch try_catch(isolate);
+        inject_console(isolate);
         auto maybe_module = compile_module(source, context);
         if (maybe_module.IsEmpty()) {
             throw_runtime_error(isolate, try_catch.Exception());
@@ -292,7 +283,12 @@ class V8System {
             throw std::runtime_error("return value is not a promise");
         }
         // wait for the promise to resolve
-        auto result = promise.As<v8::Promise>()->Result();
+        auto promise_obj = promise.As<v8::Promise>();
+        if (promise_obj->State() == v8::Promise::PromiseState::kRejected) {
+            auto result = promise_obj->Result();
+            throw_runtime_error(isolate, result);
+        }
+        auto result = promise_obj->Result();
         // assert the result is an object
         if (!result->IsObject()) {
             throw std::runtime_error("promise result is not a valid object");
@@ -327,6 +323,38 @@ class V8System {
                                     v8::Local<v8::Value> exception) {
         v8::String::Utf8Value error(isolate, exception);
         throw std::runtime_error(*error ? *error : "unknown error");
+    }
+
+    /**
+     * console implementation
+     */
+    static void inject_console(v8::Isolate* isolate) {
+        auto console = v8::ObjectTemplate::New(isolate);
+        console->Set(
+            isolate, "log",
+            v8::FunctionTemplate::New(
+                isolate, [](const v8::FunctionCallbackInfo<v8::Value>& args) {
+                    if (args.Length() < 1) {
+                        return;
+                    }
+                    auto* isolate = args.GetIsolate();
+                    v8::String::Utf8Value str(isolate, args[0]);
+                    // TODO(thejchap): use the logger instance
+                    py::print(*str);
+                }));
+        auto maybe_bool = isolate->GetCurrentContext()->Global()->Set(
+            isolate->GetCurrentContext(), to_v8_string(isolate, "console"),
+            console->NewInstance(isolate->GetCurrentContext())
+                .ToLocalChecked());
+        if (maybe_bool.IsNothing()) {
+            throw_runtime_error(isolate,
+                                isolate->GetCurrentContext()->Global());
+        }
+        auto bool_val = maybe_bool.ToChecked();
+        if (!bool_val) {
+            throw_runtime_error(isolate,
+                                isolate->GetCurrentContext()->Global());
+        }
     }
 
     /**
