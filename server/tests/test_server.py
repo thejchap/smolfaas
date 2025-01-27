@@ -53,6 +53,16 @@ export default async function handler(payload) {
     assert body.get("result") == "hello world", body
 
 
+def test_exceptions(client: TestClient):
+    src = """
+export default async function handler() {
+    throw new Error("error");
+};
+    """
+    with pytest.raises(RuntimeError):
+        client.post("/invoke", json={"source": src})
+
+
 def test_function_e2e(client: TestClient):
     src = """
 let count = 0;
