@@ -88,6 +88,8 @@
 				"database": "tmp/db.sqlite3",
 				"name": "dev",
 			}
-		]
+		],
+        "prettier.enable": true,
+        "editor.formatOnSave": true
 	}
 }

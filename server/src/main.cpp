@@ -36,10 +36,12 @@ class V8System {
     /**
      * takes a script source code and compiles it+runs it
      */
-    static std::string compile_and_invoke_source(const std::string& src,
-                                                 const std::string& payload) {
+    std::string compile_and_invoke_source(const std::string& src,
+                                          const std::string& payload) const {
         // create a new isolate
         v8::Isolate::CreateParams create_params;
+        create_params.constraints.ConfigureDefaultsFromHeapSize(
+            0, max_heap_size_mb_ * 1024 * 1024);
         create_params.array_buffer_allocator =
             v8::ArrayBuffer::Allocator::NewDefaultAllocator();
         // custom deleter for the isolate - dispose when the unique_ptr goes out
@@ -101,6 +103,8 @@ class V8System {
         logger_.attr("info")("isolate pool miss for function: " + function_id);
         // we don't have a cached isolate. create one and put it in the cache
         v8::Isolate::CreateParams create_params;
+        create_params.constraints.ConfigureDefaultsFromHeapSize(
+            0, max_heap_size_mb_ * 1024 * 1024);
         create_params.array_buffer_allocator =
             v8::ArrayBuffer::Allocator::NewDefaultAllocator();
         v8::Isolate* isolate = v8::Isolate::New(create_params);
@@ -159,6 +163,10 @@ class V8System {
      */
     py::object logging_;
     py::object logger_;
+    /**
+     * resource constraints
+     */
+    size_t max_heap_size_mb_ = 512;
 
     WarmFunction* get_warm_function_from_pool(const std::string& function_id) {
         auto it = pool_lookup_.find(function_id);

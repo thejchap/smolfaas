@@ -1,11 +1,15 @@
 # tinyfaas
+
 a tiny faas platform. inspired by CloudFlare Workers/Vercel Edge Functions. adventures in V8.
 
 ## overview
+
 this is an educational project aimed at better understanding V8 and serverless compute.
 
 ## architecture
+
 ### server
+
 wip
 
 ## notes
@@ -16,10 +20,11 @@ wip
 
 ## todo
 
--   [ ] json to and from invocations
--   [ ] exception handling
--   [ ] resource limits
 -   [ ] log from functions
+-   [ ] check how promises work
+-   [x] resource limits
+-   [x] exception handling
+-   [x] json to and from invocations
 -   [x] cache compiled module
 -   [x] store deployments
 -   [x] logging
@@ -37,3 +42,5 @@ wip
 -   https://chromium.googlesource.com/v8/v8/+/branch-heads/11.9/samples/hello-world.cc
 -   https://gist.github.com/surusek/4c05e4dcac6b82d18a1a28e6742fc23e?permalink_comment_id=4472429
 -   https://github.com/nodejs/node-v0.x-archive/blob/master/lib/console.js
+-   https://github.com/rogchap/v8go/issues/308
+-   https://v8.github.io/api/head/classv8_1_1ResourceConstraints.html
