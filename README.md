@@ -1,10 +1,10 @@
 # tinyfaas
 
-a tiny faas platform. inspired by CloudFlare Workers/Vercel Edge Functions. adventures in embedded V8.
+a tiny (<1k loc) faas platform. inspired by CloudFlare Workers/Vercel Edge Functions. adventures in embedded V8.
 
 ## overview
 
-this is an educational project aimed at better understanding V8 and serverless compute.
+this is an educational project aimed at better understanding V8 and serverless compute. also checked another box for me that i've been interested in which is doing a python project with a native extension
 
 ## architecture
 
@@ -12,6 +12,7 @@ this is an educational project aimed at better understanding V8 and serverless c
 
 -   FastAPI API
 -   embedded V8 runtime
+-   uses `scikit-build-core` and `pybind11` for c++ <> python bridge
 -   SQLite for storing function/deployment data and source code
 -   a "function" is an ESM module with a default export that is invoked as the function handler
 -   functions are invoked in V8 isolates
