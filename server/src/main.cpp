@@ -36,7 +36,8 @@ class V8System {
     /**
      * takes a script source code and compiles it+runs it
      */
-    static std::string compile_and_invoke_source(const std::string& src) {
+    std::string compile_and_invoke_source(const std::string& src,
+                                          const std::string& payload) {
         // create a new isolate
         v8::Isolate::CreateParams create_params;
         create_params.array_buffer_allocator =
@@ -52,24 +53,20 @@ class V8System {
         v8::TryCatch try_catch(isolate.get());
         auto source = to_v8_string(isolate.get(), src);
         auto mod = compile_and_evaluate_module(source, context);
-        return call_default_export(isolate.get(), context, mod);
+        return call_default_export(isolate.get(), context, mod, payload);
     }
 
     /**
      * if there is a warm isolate in the cache for this function,
      * use it to call the function. otherwise, create a new isolate
      */
-    std::string invoke_function(
-        const std::string& function_id, const std::string& source,
-        const std::string& live_deployment_id,
-        const std::optional<py::dict>& payload = std::nullopt) {
-        if (payload) {
-            logger_.attr("info")("invoking function: " + function_id +
-                                 " with payload: " +
-                                 py::str(payload.value()).cast<std::string>());
-        } else {
-            logger_.attr("info")("invoking function: " + function_id);
-        }
+    std::string invoke_function(const std::string& function_id,
+                                const std::string& source,
+                                const std::string& live_deployment_id,
+                                const std::string& payload) {
+        logger_.attr("info")("invoking function: " + function_id +
+                             " with payload: " + payload +
+                             " and live deployment id: " + live_deployment_id);
         {
             // check if we have a warm isolate in the pool
             auto* warm_function = get_warm_function_from_pool(function_id);
@@ -96,7 +93,8 @@ class V8System {
                     v8::Context::Scope context_scope(context);
                     v8::Local<v8::Module> warm_mod =
                         warm_function->mod.Get(warm_isolate);
-                    return call_default_export(warm_isolate, context, warm_mod);
+                    return call_default_export(warm_isolate, context, warm_mod,
+                                               payload);
                 }
             }
         }
@@ -113,7 +111,7 @@ class V8System {
         v8::TryCatch try_catch(isolate);
         auto source_code = to_v8_string(isolate, source);
         auto mod = compile_and_evaluate_module(source_code, context);
-        auto result = call_default_export(isolate, context, mod);
+        auto result = call_default_export(isolate, context, mod, payload);
         logger_.attr("info")("putting warm isolate in pool for function: " +
                              function_id);
         put_warm_function_to_pool(function_id, live_deployment_id, isolate,
@@ -254,7 +252,8 @@ class V8System {
      */
     static std::string call_default_export(v8::Isolate* isolate,
                                            v8::Local<v8::Context> context,
-                                           v8::Local<v8::Module> module) {
+                                           v8::Local<v8::Module> module,
+                                           const std::string& payload) {
         // get the default export from the module
         v8::Local<v8::Value> namespace_object = module->GetModuleNamespace();
         if (!namespace_object->IsObject()) {
@@ -274,7 +273,23 @@ class V8System {
         }
         // call the default export
         auto func = default_export.As<v8::Function>();
-        auto maybe_promise = func->Call(context, context->Global(), 0, nullptr);
+        auto json_parse = context->Global()
+                              ->Get(context, to_v8_string(isolate, "JSON"))
+                              .ToLocalChecked()
+                              .As<v8::Object>()
+                              ->Get(context, to_v8_string(isolate, "parse"))
+                              .ToLocalChecked()
+                              .As<v8::Function>();
+        v8::Local<v8::Value> args[1] = {to_v8_string(isolate, payload)};
+        auto maybe_payload_value =
+            json_parse->Call(context, context->Global(), 1, args);
+        if (maybe_payload_value.IsEmpty()) {
+            throw std::runtime_error("failed to parse the payload");
+        }
+        auto payload_value = maybe_payload_value.ToLocalChecked();
+        v8::Local<v8::Value> call_args[1] = {payload_value};
+        auto maybe_promise =
+            func->Call(context, context->Global(), 1, call_args);
         if (maybe_promise.IsEmpty()) {
             throw std::runtime_error("failed to call the default export");
         }
@@ -293,7 +308,6 @@ class V8System {
         if (!result->IsObject()) {
             throw std::runtime_error("promise result is not a valid object");
         }
-        // json stringify object and return the resulting string
         auto json_stringify =
             context->Global()
                 ->Get(context, to_v8_string(isolate, "JSON"))
@@ -302,9 +316,9 @@ class V8System {
                 ->Get(context, to_v8_string(isolate, "stringify"))
                 .ToLocalChecked()
                 .As<v8::Function>();
-        v8::Local<v8::Value> args[1] = {result};
+        v8::Local<v8::Value> args2[1] = {result};
         auto maybe_json_string =
-            json_stringify->Call(context, context->Global(), 1, args);
+            json_stringify->Call(context, context->Global(), 1, args2);
         if (maybe_json_string.IsEmpty()) {
             throw std::runtime_error("failed to stringify the result");
         }
@@ -418,7 +432,6 @@ class V8System {
 PYBIND11_MODULE(_core, m) {   // NOLINT(misc-use-anonymous-namespace)
     py::class_<V8System>(m, "V8System")
         .def(py::init<>())
-        .def_static("compile_and_invoke_source",
-                    &V8System::compile_and_invoke_source)
+        .def("compile_and_invoke_source", &V8System::compile_and_invoke_source)
         .def("invoke_function", &V8System::invoke_function);
 }

@@ -36,12 +36,9 @@ export default async function handler() {
     assert body["result"] == "hello"
 
 
-@pytest.mark.skip
 def test_invoke_script_with_payload(client: TestClient):
     src = """
 export default async function handler(payload) {
-    console.log("hello");
-    console.log(payload);
     return {
         result: "hello " + payload.name
     };

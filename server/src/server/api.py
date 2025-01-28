@@ -57,6 +57,7 @@ invoke arbitrary source code
 
 class SourceInvocationRequest(BaseModel):
     source: str
+    payload: dict[str, Any] | None = None
 
 
 @API.post("/invoke", response_class=JSONResponse)
@@ -67,7 +68,10 @@ def invoke_source(
     """
     compile and run script on the fly
     """
-    result = v8.compile_and_invoke_source(req.source)
+    result = v8.compile_and_invoke_source(
+        req.source,
+        json.dumps(req.payload),
+    )
     return JSONResponse(content=json.loads(result))
 
 
@@ -188,7 +192,7 @@ def invoke_function(
         function_id,
         source,
         deployment_id,
-        request,
+        json.dumps(request or {}),
     )
     return JSONResponse(content=json.loads(res))
 

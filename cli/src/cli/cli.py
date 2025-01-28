@@ -35,11 +35,16 @@ FunctionInvocationPayload = Annotated[
 @CLI.command(name="invoke", help="invoke a script")
 def invoke(
     module_path: ModulePath,
+    payload: FunctionInvocationPayload | None = None,
     base_url: BaseURL = DEFAULT_BASE_URL,
 ):
     with open(module_path) as f:
         src = f.read()
-    res = _api_request(method="POST", url=f"{base_url}/invoke", body={"source": src})
+    res = _api_request(
+        method="POST",
+        url=f"{base_url}/invoke",
+        body={"source": src, "payload": json.loads(payload) if payload else None},
+    )
     print(json.dumps(res, indent=2))
 
 
