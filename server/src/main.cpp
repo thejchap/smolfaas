@@ -36,8 +36,8 @@ class V8System {
     /**
      * takes a script source code and compiles it+runs it
      */
-    std::string compile_and_invoke_source(const std::string& src,
-                                          const std::string& payload) {
+    static std::string compile_and_invoke_source(const std::string& src,
+                                                 const std::string& payload) {
         // create a new isolate
         v8::Isolate::CreateParams create_params;
         create_params.array_buffer_allocator =
