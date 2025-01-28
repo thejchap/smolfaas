@@ -38,6 +38,9 @@ uv run cli functions invoke --function-id fn-01jjnh3y8x60qp5ywxzb7gt83h --payloa
 
 ## todo
 
+-   [ ] invoke from stdin
+-   [ ] cli install stuff
+-   [ ] docker
 -   [ ] log from functions
 -   [ ] check how promises work
 -   [x] resource limits
