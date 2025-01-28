@@ -1,6 +1,6 @@
 # tinyfaas
 
-a tiny faas platform. inspired by CloudFlare Workers/Vercel Edge Functions. adventures in V8.
+a tiny faas platform. inspired by CloudFlare Workers/Vercel Edge Functions. adventures in embedded V8.
 
 ## overview
 
@@ -10,7 +10,24 @@ this is an educational project aimed at better understanding V8 and serverless c
 
 ### server
 
-wip
+-   FastAPI API
+-   embedded V8 runtime
+-   SQLite for storing function/deployment data and source code
+-   a "function" is an ESM module with a default export that is invoked as the function handler
+-   functions are invoked in V8 isolates
+-   isolates are kept warm and reused for subsequent invocations of the same functions (ie lambda cold/warm starts)
+-   warm isolates are kept in an lru cache (128 of them) - arbitrary and simple
+-   invocations will always hit the latest deployment of a function (even with a warm function running - it'll get evicted)
+
+## cli
+
+```sh
+uv run cli functions create --name "hello-world"
+uv run cli functions deploy ./examples/basic.js --function-id fn-01jjnh3y8x60qp5ywxzb7gt83h
+uv run cli functions invoke --function-id fn-01jjnh3y8x60qp5ywxzb7gt83h --payload '{"name": "world"}'
+```
+
+## running
 
 ## notes
 
