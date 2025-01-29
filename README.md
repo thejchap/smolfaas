@@ -41,6 +41,7 @@ uv run cli functions invoke --function-id fn-01jjnh3y8x60qp5ywxzb7gt83h --payloa
 -   [ ] invoke from stdin
 -   [ ] cli install stuff
 -   [ ] docker
+-   [ ] blow up if homebrew v8 version not docker version
 -   [ ] log from functions
 -   [ ] check how promises work
 -   [x] resource limits

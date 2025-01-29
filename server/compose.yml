@@ -1,7 +1,12 @@
 services:
   server:
     # Build the image from the Dockerfile in the current directory
-    build: .
+    build:
+      context: .
+      # https://docs.docker.com/reference/compose-file/build/#platforms
+      # https://github.com/docker/roadmap/issues/384#issuecomment-1938832154
+      platforms:
+        - linux/amd64
 
     # Host the FastAPI application on port 8000
     ports:

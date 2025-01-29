@@ -1,59 +1,74 @@
-# Use a Python image with uv pre-installed
-# https://github.com/astral-sh/uv-docker-example/blob/main/Dockerfile
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
-
-# Install the project into `/app`
-WORKDIR /app
-
-# Enable bytecode compilation
-ENV UV_COMPILE_BYTECODE=1
-
-# Copy from the cache instead of linking since it's a mounted volume
-ENV UV_LINK_MODE=copy
-
-# Needed for scikit build core
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake
-    # cmake \
-    # git \
-    # wget g++ clang clang-format lld llvm ninja-build pkg-config
-
-# V8
+# V8 builder image
+# https://v8.dev/docs/build
 # https://v8.dev/docs/source-code
-# install version
-# ENV V8_VERSION=12.7.224.16
-# RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-# ENV PATH=$PATH:/app/depot_tools
-# RUN mkdir ~/v8
-# RUN cd ~/v8
-# RUN fetch v8
-# WORKDIR /app/v8
-# RUN git checkout tags/${V8_VERSION}
-# RUN gclient sync
-# RUN tools/dev/gm.py arm64.release
+# https://v8.dev/docs/release-process
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS build
+ENV V8_VERSION=12.7
 
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    git curl python3 python3-pip python3-distutils \
+    g++ clang cmake ninja-build build-essential \
+    pkg-config && \
+    # cleanup - reduce image size
+    rm -rf /var/lib/apt/lists/*
 
-# Install the project's dependencies using the lockfile and settings
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev
+# Install depot_tools for fetching V8 source
+WORKDIR /depot_tools
+RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git . && \
+    echo 'export PATH=$PWD:$PATH' >> /etc/profile && \
+    echo 'export PATH=$PWD:$PATH' >> ~/.bashrc
+ENV PATH="/depot_tools:$PATH"
 
-# Then, add the rest of the project source code and install it
-# Installing separately from its dependencies allows optimal layer caching
-ADD . /app
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+# Fetch V8 source and sync dependencies
+WORKDIR /v8
+RUN fetch v8
+WORKDIR /v8/v8
+RUN git checkout branch-heads/${V8_VERSION}
+RUN gclient sync
 
-# Place executables in the environment at the front of the path
-ENV PATH="/app/.venv/bin:$PATH"
+# Build V8
+WORKDIR /v8/v8
+RUN tools/dev/v8gen.py amd64.release.sample
+RUN ninja -C out.gn/amd64.release.sample v8_monolith
 
-# Reset the entrypoint, don't invoke `uv`
-ENTRYPOINT []
+# Copy the built V8 binary to the final image
+WORKDIR /v8/v8/out.gn/x64.release.sample
+RUN cp d8 /d8
 
-# Run the FastAPI application by default
-# Uses `fastapi dev` to enable hot-reloading when the `watch` sync occurs
-# Uses `--host 0.0.0.0` to allow access from outside the container
-# CMD ["fastapi", "run", "--host", "0.0.0.0", "src/server"]
-CMD ["sleep", "infinity"]
+CMD ["./d8"]
+
+# # Use a Python image with uv pre-installed
+# FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+
+# # Install the project into `/app`
+# WORKDIR /app
+
+# # Enable bytecode compilation
+# ENV UV_COMPILE_BYTECODE=1
+
+# # Copy from the cache instead of linking since it's a mounted volume
+# ENV UV_LINK_MODE=copy
+
+# # Install the project's dependencies using the lockfile and settings
+# RUN --mount=type=cache,target=/root/.cache/uv \
+#     --mount=type=bind,source=uv.lock,target=uv.lock \
+#     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+#     uv sync --frozen --no-install-project --no-dev
+
+# # Then, add the rest of the project source code and install it
+# # Installing separately from its dependencies allows optimal layer caching
+# ADD . /app
+# RUN --mount=type=cache,target=/root/.cache/uv \
+#     uv sync --frozen --no-dev
+
+# # Place executables in the environment at the front of the path
+# ENV PATH="/app/.venv/bin:$PATH"
+
+# # Reset the entrypoint, don't invoke `uv`
+# ENTRYPOINT []
+
+# # Run the FastAPI application by default
+# # Uses `fastapi dev` to enable hot-reloading when the `watch` sync occurs
+# # Uses `--host 0.0.0.0` to allow access from outside the container
+# CMD ["fastapi", "dev", "--host", "0.0.0.0", "src/uv_docker_example"]
