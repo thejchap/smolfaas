@@ -68,10 +68,11 @@ uv run cli functions invoke --function-id fn-12345 --payload '{"name": "world"}'
 ## todo
 
 -   [ ] cli install stuff
--   [ ] docker
+-   [ ] sqlite docker
 -   [ ] blow up if homebrew v8 version not docker version
 -   [ ] log from functions
 -   [ ] check how promises work
+-   [x] docker
 -   [x] invoke from stdin
 -   [x] resource limits
 -   [x] exception handling

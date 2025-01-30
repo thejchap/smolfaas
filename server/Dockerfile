@@ -21,17 +21,14 @@ RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git .
     echo 'export PATH=$PWD:$PATH' >> ~/.bashrc
 ENV PATH="/depot_tools:$PATH"
 
-# Fetch V8 source and sync dependencies
+# Fetch V8 source, sync dependencies, and build V8
 WORKDIR /v8
-RUN fetch v8
-WORKDIR /v8/v8
-RUN git checkout branch-heads/${V8_VERSION}
-RUN gclient sync -D
-
-# Build V8
-WORKDIR /v8/v8
-RUN tools/dev/v8gen.py x64.release.sample -vvv
-RUN ninja -C out.gn/x64.release.sample v8_monolith
+RUN fetch v8 && \
+    cd v8 && \
+    git checkout branch-heads/${V8_VERSION} && \
+    gclient sync -D && \
+    tools/dev/v8gen.py x64.release.sample -vvv && \
+    ninja -C out.gn/x64.release.sample v8_monolith
 
 # Use a Python image with uv pre-installed
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS build-app
@@ -76,4 +73,4 @@ ENTRYPOINT []
 # Run the FastAPI application by default
 # Uses `fastapi dev` to enable hot-reloading when the `watch` sync occurs
 # Uses `--host 0.0.0.0` to allow access from outside the container
-CMD ["fastapi", "run", "--host", "0.0.0.0", "src/server"]
+CMD ["fastapi", "run", "--host", "0.0.0.0", "src/server", "--port", "8080"]
