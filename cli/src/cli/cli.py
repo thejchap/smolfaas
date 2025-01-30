@@ -1,5 +1,5 @@
 import json
-from pathlib import Path
+import sys
 from typing import Annotated
 
 import requests
@@ -12,10 +12,10 @@ CLI.add_typer(FUNCTIONS_CLI, name="functions")
 DEFAULT_BASE_URL = "http://localhost:8000"
 
 
-ModulePath = Annotated[
-    Path,
+Source = Annotated[
+    typer.FileText,
     typer.Argument(
-        ..., help="path to the module to be run. must export a default function."
+        help="path to the module to be run. must export a default function."
     ),
 ]
 BaseURL = Annotated[
@@ -34,16 +34,17 @@ FunctionInvocationPayload = Annotated[
 
 @CLI.command(name="invoke", help="invoke a script")
 def invoke(
-    module_path: ModulePath,
+    source: Source = sys.stdin,
     payload: FunctionInvocationPayload | None = None,
     base_url: BaseURL = DEFAULT_BASE_URL,
 ):
-    with open(module_path) as f:
-        src = f.read()
     res = _api_request(
         method="POST",
         url=f"{base_url}/invoke",
-        body={"source": src, "payload": json.loads(payload) if payload else None},
+        body={
+            "source": source.read(),
+            "payload": json.loads(payload) if payload else None,
+        },
     )
     print(json.dumps(res, indent=2))
 
@@ -51,15 +52,13 @@ def invoke(
 @FUNCTIONS_CLI.command(name="deploy", help="deploy a function")
 def deploy_function(
     function_id: FunctionId,
-    module_path: ModulePath,
+    source: Source = sys.stdin,
     base_url: BaseURL = DEFAULT_BASE_URL,
 ):
-    with open(module_path) as f:
-        src = f.read()
     res = _api_request(
         method="POST",
         url=f"{base_url}/functions/{function_id}/deployments",
-        body={"source": src},
+        body={"source": source.read()},
     )
     print(json.dumps(res, indent=2))
 

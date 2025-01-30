@@ -3,6 +3,7 @@
 # https://v8.dev/docs/source-code
 # https://v8.dev/docs/release-process
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS build
+# it's the one available in homebrew
 ENV V8_VERSION=12.7
 
 # Install dependencies
@@ -25,17 +26,15 @@ WORKDIR /v8
 RUN fetch v8
 WORKDIR /v8/v8
 RUN git checkout branch-heads/${V8_VERSION}
-RUN gclient sync
+RUN gclient sync -D
 
 # Build V8
 WORKDIR /v8/v8
-RUN tools/dev/v8gen.py amd64.release.sample
-RUN ninja -C out.gn/amd64.release.sample v8_monolith
+RUN tools/dev/v8gen.py x64.release.sample -vvv
+RUN ninja -C out.gn/x64.release.sample v8_monolith
 
 # Copy the built V8 binary to the final image
 WORKDIR /v8/v8/out.gn/x64.release.sample
-RUN cp d8 /d8
-
 CMD ["./d8"]
 
 # # Use a Python image with uv pre-installed
