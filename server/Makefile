@@ -15,6 +15,8 @@ docker:
 clean:
 	@docker system prune --volumes --force
 brew:
-	@brew install v8 cmake
+	@brew install v8 cmake flyctl
 install:
 	@uv sync --reinstall
+deploy:
+	@fly deploy
