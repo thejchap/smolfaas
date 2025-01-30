@@ -4,7 +4,7 @@
 # https://v8.dev/docs/release-process
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS build
 # it's the one available in homebrew
-ENV V8_VERSION=12.7
+ARG V8_VERSION=12.7
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
