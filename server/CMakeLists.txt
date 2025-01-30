@@ -9,12 +9,15 @@ add_definitions(-DV8_ENABLE_SANDBOX)
 add_definitions(-DV8_COMPRESS_POINTERS)
 
 if (APPLE)
+    # local
     set(V8_DIR "/opt/homebrew/opt/v8")
+    include_directories(${V8_DIR}/include)
 else()
-    set(V8_DIR "/usr/lib/aarch64-linux-gnu")
-    include_directories("/usr/include/node")
+    # docker
+    set(V8_DIR "/v8")
+    link_directories("${V8_DIR}/obj")
+    include_directories(${V8_DIR}/include)
 endif()
-include_directories(${V8_DIR}/include)
 
 
 # stuff for pybind11
@@ -26,16 +29,18 @@ pybind11_add_module(_core MODULE src/main.cpp)
 
 # Link libraries
 if(APPLE)
+    # local
     target_link_libraries(_core
         PRIVATE
             ${V8_DIR}/lib/libv8.dylib
             ${V8_DIR}/lib/libv8_libplatform.dylib
     )
 else()
+    # docker
     target_link_libraries(_core
         PRIVATE
-            ${V8_DIR}/libv8.so
-            ${V8_DIR}/libv8_libplatform.so
+            ${V8_DIR}/out/obj/libv8_monolith.a
+            ${V8_DIR}/out/obj/libv8_libplatform.a
     )
 endif()
 

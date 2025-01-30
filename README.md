@@ -95,3 +95,5 @@ uv run cli functions invoke --function-id fn-12345 --payload '{"name": "world"}'
 -   https://github.com/nodejs/node-v0.x-archive/blob/master/lib/console.js
 -   https://github.com/rogchap/v8go/issues/308
 -   https://v8.github.io/api/head/classv8_1_1ResourceConstraints.html
+
+<img src="https://v8.dev/_img/docs/embed/local-persist-handles-review.png" />

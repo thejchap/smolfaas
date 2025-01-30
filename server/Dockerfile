@@ -33,41 +33,47 @@ WORKDIR /v8/v8
 RUN tools/dev/v8gen.py x64.release.sample -vvv
 RUN ninja -C out.gn/x64.release.sample v8_monolith
 
-# Copy the built V8 binary to the final image
-WORKDIR /v8/v8/out.gn/x64.release.sample
-CMD ["./d8"]
+# Use a Python image with uv pre-installed
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS build-app
 
-# # Use a Python image with uv pre-installed
-# FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+# Install dependencies for building app
+RUN apt-get update && apt-get install -y \
+    g++ clang cmake && \
+    # cleanup - reduce image size
+    rm -rf /var/lib/apt/lists/*
 
-# # Install the project into `/app`
-# WORKDIR /app
+# Install the project into `/app`
+WORKDIR /app
 
-# # Enable bytecode compilation
-# ENV UV_COMPILE_BYTECODE=1
+# copy the v8 files to link
+COPY --from=build /v8/v8/out.gn/x64.release.sample/ /v8/out
+COPY --from=build /v8/v8/include/ /v8/include
 
-# # Copy from the cache instead of linking since it's a mounted volume
-# ENV UV_LINK_MODE=copy
 
-# # Install the project's dependencies using the lockfile and settings
-# RUN --mount=type=cache,target=/root/.cache/uv \
-#     --mount=type=bind,source=uv.lock,target=uv.lock \
-#     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-#     uv sync --frozen --no-install-project --no-dev
+# Enable bytecode compilation
+ENV UV_COMPILE_BYTECODE=1
 
-# # Then, add the rest of the project source code and install it
-# # Installing separately from its dependencies allows optimal layer caching
-# ADD . /app
-# RUN --mount=type=cache,target=/root/.cache/uv \
-#     uv sync --frozen --no-dev
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
 
-# # Place executables in the environment at the front of the path
-# ENV PATH="/app/.venv/bin:$PATH"
+# Install the project's dependencies using the lockfile and settings
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project --no-dev
 
-# # Reset the entrypoint, don't invoke `uv`
-# ENTRYPOINT []
+# Then, add the rest of the project source code and install it
+# Installing separately from its dependencies allows optimal layer caching
+ADD . /app
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
 
-# # Run the FastAPI application by default
-# # Uses `fastapi dev` to enable hot-reloading when the `watch` sync occurs
-# # Uses `--host 0.0.0.0` to allow access from outside the container
-# CMD ["fastapi", "dev", "--host", "0.0.0.0", "src/uv_docker_example"]
+# Place executables in the environment at the front of the path
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Reset the entrypoint, don't invoke `uv`
+ENTRYPOINT []
+
+# Run the FastAPI application by default
+# Uses `fastapi dev` to enable hot-reloading when the `watch` sync occurs
+# Uses `--host 0.0.0.0` to allow access from outside the container
+CMD ["fastapi", "run", "--host", "0.0.0.0", "src/server"]
