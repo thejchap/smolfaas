@@ -59,19 +59,19 @@ uv run cli functions invoke --function-id fn-12345 --payload '{"name": "world"}'
     way to install on linux, and tinyfaas wouldn't compile on the latter due to
     some breaking api changes between the 2 versions. i ended up building from
     source off a release branch for both platforms. side note - building v8 was
-    the first time i'd heard my fan turn on on my m4 pro. kept running into
-    "cannot allocate memory" from docker. this was when building for amd64 as a
-    result of
+    the first time i'd heard my fan turn on on my m4 pro. also kept running into
+    "cannot allocate memory" from docker - realize i had a resource limit set,
+    removed that and it worked but was slow. this was when building for amd64 as
+    a result of
     [this](https://github.com/docker/roadmap/issues/384#issuecomment-1938832154).
-    did not have this problem when building for arm
 
 ## todo
 
--   [ ] sqlite docker
--   [ ] blow up if homebrew v8 version not docker version
 -   [ ] ship cli to pypi
 -   [ ] log from functions
--   [ ] check how promises work
+-   [x] blow up if homebrew v8 version not docker version
+-   [x] sqlite docker
+-   [x] check how promises (dont) work
 -   [x] docker
 -   [x] invoke from stdin
 -   [x] resource limits
