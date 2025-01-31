@@ -1,0 +1,24 @@
+name: deploy-server
+on:
+  push:
+    paths:
+      - 'server/**'
+    branches:
+      - main
+  workflow_dispatch:
+concurrency:
+  group: production
+  cancel-in-progress: true
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        working-directory: server
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
