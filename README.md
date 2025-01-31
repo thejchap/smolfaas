@@ -67,7 +67,6 @@ uv run cli functions invoke --function-id fn-12345 --payload '{"name": "world"}'
 
 ## todo
 
--   [ ] cli install stuff
 -   [ ] sqlite docker
 -   [ ] blow up if homebrew v8 version not docker version
 -   [ ] ship cli to pypi
