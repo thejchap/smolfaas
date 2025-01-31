@@ -56,8 +56,17 @@ invoke arbitrary source code
 
 
 class SourceInvocationRequest(BaseModel):
-    source: str
-    payload: dict[str, Any] | None = None
+    source: str = Field(
+        ...,
+        min_length=1,
+        description="source code to run",
+        examples=[
+            "export default async (payload)=>({hello: payload.name})",
+        ],
+    )
+    payload: dict[str, Any] | None = Field(
+        None, description="function invocation payload", examples=[{"name": "world"}]
+    )
 
 
 @API.post("/invoke", response_class=JSONResponse)
@@ -95,16 +104,20 @@ class FunctionCreateRequest(BaseModel):
             FAKER.words(2, unique=True) + [str(randint(1000, 9999))]
         ),
         min_length=1,
+        description="function name",
+        examples=["hello-world-1234"],
     )
     _id: str = PrivateAttr(default_factory=lambda: new_primary_key("fn"))
 
 
 class FunctionRow(BaseModel):
-    id_: str = Field(alias="id")
-    name: str
-    created_at: datetime
-    updated_at: datetime
-    live_deployment_id: str | None = None
+    id_: str = Field(alias="id", description="function id")
+    name: str = Field(description="function name")
+    created_at: datetime = Field(description="function creation time")
+    updated_at: datetime = Field(description="function last update time")
+    live_deployment_id: str | None = Field(
+        None, description="currently live deployment id responding to invocations"
+    )
 
 
 class FunctionCreateResponse(BaseModel):
@@ -130,14 +143,21 @@ deploy a function
 
 
 class FunctionDeployRequest(BaseModel):
-    source: str
+    source: str = Field(
+        ...,
+        min_length=1,
+        description="source code to deploy",
+        examples=[
+            "export default async (payload)=>({hello: payload.name})",
+        ],
+    )
     _id: str = PrivateAttr(default_factory=lambda: new_primary_key("dp"))
 
 
 class CreatedDeployment(BaseModel):
     id_: str = Field(alias="id")
-    source: str
-    function_id: str
+    source: str = Field(description="source code")
+    function_id: str = Field(description="function id")
 
 
 class FunctionDeployResponse(BaseModel):

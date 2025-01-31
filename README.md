@@ -3,6 +3,9 @@
 a tiny (<1k loc) faas platform. inspired by CloudFlare Workers/Vercel Edge
 Functions. adventures in embedded V8.
 
+try it out here:
+https://tinyfaas.jchap.me/docs#/default/invoke_source_invoke_post
+
 ## overview
 
 this is an educational project aimed at better understanding V8 and serverless
