@@ -1,7 +1,7 @@
 [project]
 name = "server"
 version = "0.1.0"
-description = "Add your description here"
+description = "a tiny (<1k loc) faas platform. inspired by CloudFlare Workers/Vercel Edge Functions. adventures in embedded V8."
 readme = "README.md"
 authors = [
     { name = "Justin Chapman", email = "commonmodestudio@gmail.com" }

@@ -28,7 +28,14 @@ async def lifespan(_: FastAPI):
 
 
 FAKER = Faker()
-API = FastAPI(lifespan=lifespan)
+API = FastAPI(
+    lifespan=lifespan,
+    title="tinyfaas",
+    description="a tiny (<1k loc) faas platform. inspired by CloudFlare Workers/Vercel Edge Functions. adventures in embedded V8. tinyfaas.jchap.me",
+    servers=[
+        {"url": "https://tinyfaas.jchap.me", "description": "production"},
+    ],
+)
 
 
 @API.middleware("http")
