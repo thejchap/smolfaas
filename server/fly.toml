@@ -25,5 +25,8 @@ primary_region = 'ewr'
   source = "tinyfaas_db"
   destination = "/db"
 
+[deploy]
+  strategy = "immediate"
+
 [env]
   SQLITE_URL = "/db/db.sqlite3"

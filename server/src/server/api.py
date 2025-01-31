@@ -31,7 +31,12 @@ FAKER = Faker()
 API = FastAPI(
     lifespan=lifespan,
     title="tinyfaas",
-    description="a tiny (<1k loc) faas platform. inspired by CloudFlare Workers/Vercel Edge Functions. adventures in embedded V8. tinyfaas.jchap.me",
+    description="""\
+a tiny (<1k loc) faas platform.
+inspired by CloudFlare Workers/Vercel Edge Functions.
+adventures in embedded V8.
+<a href='https://github.com/thejchap/tinyfaas'>github.com/thejchap/tinyfaas</a>
+""".strip(),
     servers=[
         {"url": "https://tinyfaas.jchap.me", "description": "production"},
     ],
