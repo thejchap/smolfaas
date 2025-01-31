@@ -124,7 +124,7 @@ class FunctionCreateResponse(BaseModel):
     function: FunctionRow
 
 
-@API.post("/functions", response_model=FunctionCreateResponse)
+@API.post("/functions", response_model=FunctionCreateResponse, tags=["functions"])
 def create_function(
     req: FunctionCreateRequest,
     conn: Annotated[sqlite3.Connection, Depends(get_conn)],
@@ -164,7 +164,11 @@ class FunctionDeployResponse(BaseModel):
     deployment: CreatedDeployment
 
 
-@API.post("/functions/{function_id}/deployments", response_model=FunctionDeployResponse)
+@API.post(
+    "/functions/{function_id}/deployments",
+    response_model=FunctionDeployResponse,
+    tags=["functions"],
+)
 def deploy_function(
     function_id: str,
     req: FunctionDeployRequest,
@@ -186,7 +190,11 @@ invoke a function
 """
 
 
-@API.post("/functions/{function_id}/invocations", response_class=JSONResponse)
+@API.post(
+    "/functions/{function_id}/invocations",
+    response_class=JSONResponse,
+    tags=["functions"],
+)
 def invoke_function(
     function_id: str,
     v8: Annotated[V8System, Depends(get_v8)],
@@ -228,7 +236,9 @@ class FunctionGetResponse(BaseModel):
     function: FunctionRow
 
 
-@API.get("/functions/{function_id}", response_model=FunctionGetResponse)
+@API.get(
+    "/functions/{function_id}", response_model=FunctionGetResponse, tags=["functions"]
+)
 def get_function(
     function_id: str,
     conn: Annotated[sqlite3.Connection, Depends(get_conn)],
