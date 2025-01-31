@@ -36,6 +36,47 @@ export default async function handler() {
     assert body["result"] == "hello"
 
 
+def test_promise_basic(client: TestClient):
+    src = """
+export default async function handler() {
+    return new Promise((resolve, reject) => {
+        resolve({result: "hello"});
+    });
+};
+    """
+    res = client.post("/invoke", json={"source": src})
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["result"] == "hello"
+
+
+def test_promise_all(client: TestClient):
+    src = """
+async function sayHi(name) {
+    return `Hello, ${name}!`;
+}
+export default async function handler() {
+    const results = await Promise.all([
+        sayHi('Alice'),
+        sayHi('Bob'),
+        sayHi('Charlie'),
+        sayHi('Dave')
+    ]);
+    return {
+        results
+    };
+};
+"""
+    res = client.post("/invoke", json={"source": src})
+    assert res.status_code == 200, res.text
+    assert res.json()["results"] == [
+        "Hello, Alice!",
+        "Hello, Bob!",
+        "Hello, Charlie!",
+        "Hello, Dave!",
+    ]
+
+
 def test_invoke_script_with_payload(client: TestClient):
     src = """
 export default async function handler(payload) {

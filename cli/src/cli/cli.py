@@ -9,7 +9,7 @@ from rich import print
 CLI = typer.Typer()
 FUNCTIONS_CLI = typer.Typer()
 CLI.add_typer(FUNCTIONS_CLI, name="functions")
-DEFAULT_BASE_URL = "http://localhost:8000"
+DEFAULT_BASE_URL = "https://tinyfaas.fly.dev"
 
 
 Source = Annotated[
