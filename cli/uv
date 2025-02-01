@@ -1,2 +1,0 @@
-return {hello: "world"} run cli invoke
-return {hello: "world"} run cli invoke

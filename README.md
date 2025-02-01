@@ -1,10 +1,10 @@
-# tinyfaas
+# smolfaas
 
-a tiny (<1k loc) faas platform. inspired by CloudFlare Workers/Vercel Edge
+a smol (<1k loc) faas platform. inspired by CloudFlare Workers/Vercel Edge
 Functions. adventures in embedded V8.
 
 try it out here:
-https://tinyfaas.jchap.me/docs#/default/invoke_source_invoke_post
+https://smolfaas.jchap.me/docs#/default/invoke_source_invoke_post
 
 ## overview
 
@@ -29,19 +29,21 @@ doing a python project with a native extension
 -   invocations will always hit the latest deployment of a function (even with a
     warm function running - it'll get evicted)
 
-## cli
+## running
+
+make sure you have uv and homebrew installed
 
 ```sh
-# invoke a script on the fly
-echo 'export default async ()=>({hello:"world"})' | uv run cli invoke
+gh repo clone thejchap/smolfaas
+cd smolfaas
+cd server
 
-# deploy a function and invoke it
-uv run cli functions create --name "hello-world" # returns a function id
-uv run cli functions deploy ./examples/basic.js --function-id fn-12345 # function id from above
-uv run cli functions invoke --function-id fn-12345 --payload '{"name": "world"}'
+# get up and running with a mac build of v8 from brew
+make
+
+# alternatively, build+run with docker
+make docker
 ```
-
-## running
 
 ## notes
 
@@ -59,7 +61,7 @@ uv run cli functions invoke --function-id fn-12345 --payload '{"name": "world"}'
 -   was an adventure getting v8 built for linux (docker) and getting cmake
     configured to build on both platforms. homebrew packages an older build of
     v8 that is NOT the one that ships with `libnode-dev` which was the easiest
-    way to install on linux, and tinyfaas wouldn't compile on the latter due to
+    way to install on linux, and smolfaas wouldn't compile on the latter due to
     some breaking api changes between the 2 versions. i ended up building from
     source off a release branch for both platforms. side note - building v8 was
     the first time i'd heard my fan turn on on my m4 pro. also kept running into
@@ -70,8 +72,8 @@ uv run cli functions invoke --function-id fn-12345 --payload '{"name": "world"}'
 
 ## todo
 
--   [ ] ship cli to pypi
 -   [ ] log from functions
+-   [x] ship cli to pypi (ditching cli for now)
 -   [x] blow up if homebrew v8 version not docker version
 -   [x] sqlite docker
 -   [x] check how promises (dont) work

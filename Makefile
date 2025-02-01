@@ -5,5 +5,4 @@ checkpoint:
 	@git push
 install:
 	@cd server && $(MAKE)
-	@cd cli && $(MAKE)
 

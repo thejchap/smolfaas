@@ -30,15 +30,15 @@ async def lifespan(_: FastAPI):
 FAKER = Faker()
 API = FastAPI(
     lifespan=lifespan,
-    title="tinyfaas",
+    title="smolfaas",
     description="""\
 a tiny (<1k loc) faas platform.
 inspired by CloudFlare Workers/Vercel Edge Functions.
 adventures in embedded V8.
-<a href='https://github.com/thejchap/tinyfaas'>github.com/thejchap/tinyfaas</a>
+<a href='https://github.com/thejchap/smolfaas'>github.com/thejchap/smolfaas</a>
 """.strip(),
     servers=[
-        {"url": "https://tinyfaas.jchap.me", "description": "production"},
+        {"url": "https://smolfaas.jchap.me", "description": "production"},
     ],
 )
 
@@ -57,7 +57,7 @@ async def add_process_time_header(request: Request, call_next):
 
 @API.get("/", response_class=PlainTextResponse)
 def root():
-    return "tinyfaas"
+    return "smolfaas"
 
 
 """

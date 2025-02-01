@@ -16,7 +16,7 @@ clean:
 	@docker system prune --volumes --force
 brew:
 	@brew install v8 cmake flyctl
-	@brew info v8 | grep "stable 12.7" && echo "correct brew version" || echo "incorrect brew version" && exit 1
+	@brew info v8 | grep "stable 12.7" && echo "correct brew version" && exit 0 || echo "incorrect brew version" && exit 1
 install:
 	@uv sync --reinstall
 deploy:
