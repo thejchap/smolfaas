@@ -352,78 +352,26 @@ class V8System {
      */
     static void inject_console(v8::Isolate* isolate) {
         auto console = v8::ObjectTemplate::New(isolate);
-        console->Set(
-            isolate, "log",
-            v8::FunctionTemplate::New(
-                isolate, [](const v8::FunctionCallbackInfo<v8::Value>& args) {
-                    if (args.Length() < 1) {
-                        return;
-                    }
-                    auto* isolate = args.GetIsolate();
-                    v8::String::Utf8Value str(isolate, args[0]);
-                    // TODO(thejchap): use the logger instance
-                    py::print(*str);
-                }));
-        console->Set(
-            isolate, "error",
-            v8::FunctionTemplate::New(
-                isolate, [](const v8::FunctionCallbackInfo<v8::Value>& args) {
-                    if (args.Length() < 1) {
-                        return;
-                    }
-                    auto* isolate = args.GetIsolate();
-                    v8::String::Utf8Value str(isolate, args[0]);
-                    // TODO(thejchap): use the logger instance
-                    py::print(*str);
-                }));
-        console->Set(
-            isolate, "info",
-            v8::FunctionTemplate::New(
-                isolate, [](const v8::FunctionCallbackInfo<v8::Value>& args) {
-                    if (args.Length() < 1) {
-                        return;
-                    }
-                    auto* isolate = args.GetIsolate();
-                    v8::String::Utf8Value str(isolate, args[0]);
-                    // TODO(thejchap): use the logger instance
-                    py::print(*str);
-                }));
-        console->Set(
-            isolate, "warn",
-            v8::FunctionTemplate::New(
-                isolate, [](const v8::FunctionCallbackInfo<v8::Value>& args) {
-                    if (args.Length() < 1) {
-                        return;
-                    }
-                    auto* isolate = args.GetIsolate();
-                    v8::String::Utf8Value str(isolate, args[0]);
-                    // TODO(thejchap): use the logger instance
-                    py::print(*str);
-                }));
-        console->Set(
-            isolate, "debug",
-            v8::FunctionTemplate::New(
-                isolate, [](const v8::FunctionCallbackInfo<v8::Value>& args) {
-                    if (args.Length() < 1) {
-                        return;
-                    }
-                    auto* isolate = args.GetIsolate();
-                    v8::String::Utf8Value str(isolate, args[0]);
-                    // TODO(thejchap): use the logger instance
-                    py::print(*str);
-                }));
-        auto maybe_bool = isolate->GetCurrentContext()->Global()->Set(
-            isolate->GetCurrentContext(), to_v8_string(isolate, "console"),
-            console->NewInstance(isolate->GetCurrentContext())
-                .ToLocalChecked());
-        if (maybe_bool.IsNothing()) {
-            throw_runtime_error(isolate,
-                                isolate->GetCurrentContext()->Global());
+        const char* methods[] = {"log", "error", "info", "warn", "debug"};
+        for (const char* method : methods) {
+            console->Set(
+                isolate, method,
+                v8::FunctionTemplate::New(
+                    isolate,
+                    [](const v8::FunctionCallbackInfo<v8::Value>& args) {
+                        if (args.Length() < 1)
+                            return;
+                        auto* isolate = args.GetIsolate();
+                        v8::String::Utf8Value str(isolate, args[0]);
+                        py::print(*str);
+                    }));
         }
-        auto bool_val = maybe_bool.ToChecked();
-        if (!bool_val) {
-            throw_runtime_error(isolate,
-                                isolate->GetCurrentContext()->Global());
+        auto context = isolate->GetCurrentContext();
+        auto instance = console->NewInstance(context).ToLocalChecked();
+        auto maybe_bool = context->Global()->Set(
+            context, to_v8_string(isolate, "console"), instance);
+        if (maybe_bool.IsNothing() || !maybe_bool.ToChecked()) {
+            throw_runtime_error(isolate, context->Global());
         }
     }
 

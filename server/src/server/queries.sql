@@ -59,3 +59,11 @@ FROM function
 WHERE id = ?
 LIMIT 1;
 -- query:end
+-- query:begin list_functions
+SELECT id,
+    name,
+    live_deployment_id,
+    created_at,
+    updated_at
+FROM function;
+-- query:end

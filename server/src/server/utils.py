@@ -14,7 +14,7 @@ from server._core import V8System
 
 
 class Settings(BaseSettings):
-    sqlite_url: str = Field(default="tmp/db.sqlite3")
+    sqlite_url: str = Field(default="db.sqlite3")
 
 
 def _load_sql() -> dict[str, str]:

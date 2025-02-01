@@ -39,6 +39,7 @@ adventures in embedded V8.
 """.strip(),
     servers=[
         {"url": "https://smolfaas.jchap.me", "description": "production"},
+        {"url": "http://localhost:8000", "description": "development"},
     ],
 )
 
@@ -92,7 +93,12 @@ class SourceInvocationRequest(BaseModel):
     )
 
 
-@API.post("/invoke", response_class=JSONResponse)
+@API.post(
+    "/invoke",
+    response_class=JSONResponse,
+    description="invoke arbitrary source code with or without a payload",
+    summary="invoke source code",
+)
 def invoke_source(
     req: SourceInvocationRequest,
     v8: Annotated[V8System, Depends(get_v8)],
@@ -147,7 +153,13 @@ class FunctionCreateResponse(BaseModel):
     function: FunctionRow
 
 
-@API.post("/functions", response_model=FunctionCreateResponse, tags=["functions"])
+@API.post(
+    "/functions",
+    response_model=FunctionCreateResponse,
+    tags=["functions"],
+    description="create a new function",
+    summary="create function",
+)
 def create_function(
     req: FunctionCreateRequest,
     conn: Annotated[sqlite3.Connection, Depends(get_conn)],
@@ -191,6 +203,8 @@ class FunctionDeployResponse(BaseModel):
     "/functions/{function_id}/deployments",
     response_model=FunctionDeployResponse,
     tags=["functions"],
+    summary="deploy function",
+    description="deploy a new version of a function and set it as the live deployment",
 )
 def deploy_function(
     function_id: str,
@@ -217,6 +231,8 @@ invoke a function
     "/functions/{function_id}/invocations",
     response_class=JSONResponse,
     tags=["functions"],
+    summary="invoke function",
+    description="invoke a function with or without a payload",
 )
 def invoke_function(
     function_id: str,
@@ -260,7 +276,11 @@ class FunctionGetResponse(BaseModel):
 
 
 @API.get(
-    "/functions/{function_id}", response_model=FunctionGetResponse, tags=["functions"]
+    "/functions/{function_id}",
+    response_model=FunctionGetResponse,
+    tags=["functions"],
+    summary="get function",
+    description="get a function by id",
 )
 def get_function(
     function_id: str,
@@ -275,3 +295,30 @@ def get_function(
             detail="function not found",
         )
     return FunctionGetResponse(function=FunctionRow.model_validate(dict(row)))
+
+
+"""
+
+list functions
+
+"""
+
+
+class FunctionListResponse(BaseModel):
+    functions: list[FunctionRow]
+
+
+@API.get(
+    "/functions",
+    response_model=FunctionListResponse,
+    tags=["functions"],
+    summary="list functions",
+    description="list all functions",
+)
+def list_functions(
+    conn: Annotated[sqlite3.Connection, Depends(get_conn)],
+):
+    cur = conn.cursor()
+    cur.execute(SQL["list_functions"])
+    rows = [FunctionRow.model_validate(dict(row)) for row in cur.fetchall()]
+    return FunctionListResponse(functions=rows)

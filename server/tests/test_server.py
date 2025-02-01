@@ -150,6 +150,12 @@ def test_create_function(client: TestClient):
     assert "live_deployment_id" in function
 
 
+def test_list_functions(client: TestClient):
+    res = client.get("/functions")
+    assert res.status_code == 200, res.text
+    assert "functions" in res.json()
+
+
 def test_pk():
     pk = new_primary_key("fn")
     assert pk.startswith("fn-")
