@@ -19,7 +19,7 @@ def client():
 def test_root(client: TestClient):
     res = client.get("/")
     assert res.status_code == 200
-    assert res.text == "smolfaas"
+    assert "smolfaas" in res.text
 
 
 def test_invoke_script(client: TestClient):

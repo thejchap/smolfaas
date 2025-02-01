@@ -9,7 +9,7 @@ from typing import Annotated, Any
 
 from faker import Faker
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field, PrivateAttr
 
 from server.utils import SQL, get_conn, get_v8, migrate, new_primary_key
@@ -55,9 +55,20 @@ async def add_process_time_header(request: Request, call_next):
     return response
 
 
-@API.get("/", response_class=PlainTextResponse)
+@API.get("/", response_class=HTMLResponse)
 def root():
-    return "smolfaas"
+    return """\
+<html>
+    <head>
+        <title>smolfaas</title>
+    </head>
+    <body>
+        <h1>smolfaas</h1>
+        <a href="/docs">docs</a>
+        <a href="https://github.com/thejchap/smolfaas">source</a>
+    </body>
+</html>
+""".strip()
 
 
 """
